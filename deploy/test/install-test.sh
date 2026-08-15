@@ -20,6 +20,13 @@ then
 else
     fail 'user units avoid unsupported hardening directives'
 fi
+
+# Preserving worldmap.jag changes its parent directory mtime; directory times are not source drift.
+if [[ $(python3 -c 'import pathlib; print(pathlib.Path("deploy/verify.sh").read_text().count("--omit-dir-times"))') == 2 ]]; then
+    pass 'drift checks ignore directory timestamps'
+else
+    fail 'drift checks ignore directory timestamps'
+fi
 assert_file() { if [[ ! -f "$1" ]]; then fail "$2 (missing $1)"; fi; }
 assert_no_file() { if [[ -e "$1" ]]; then fail "$2 (unexpected $1)"; fi; }
 assert_contains() { if ! grep -Fq "$2" "$1"; then fail "$3"; fi; }

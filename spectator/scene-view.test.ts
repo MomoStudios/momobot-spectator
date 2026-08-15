@@ -9,9 +9,9 @@ describe('overview scene switcher', () => {
         expect(normalizeScene(undefined)).toBe('client');
     });
 
-    test('uses the public Funnel client websocket path', () => {
-        expect(streamSocketUrl({ protocol: 'https:', hostname: 'moltbot.story-nessie.ts.net', host: 'moltbot.story-nessie.ts.net', port: '' }))
-            .toBe('wss://moltbot.story-nessie.ts.net/client/ws');
+    test('uses the public Cloudflare client websocket path', () => {
+        expect(streamSocketUrl({ protocol: 'https:', hostname: 'momobot.runtimeexception.net', host: 'momobot.runtimeexception.net', port: '' }))
+            .toBe('wss://momobot.runtimeexception.net/client/ws');
     });
 
     test('connects directly to the local stream service during development', () => {

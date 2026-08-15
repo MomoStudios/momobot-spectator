@@ -114,6 +114,24 @@ node spikes/001-full-client-stream/stream-server.mjs
 
 Credentials come from `bots/<botname>/bot.env`, which is **never** committed.
 
+### Production deployment
+
+The versioned deployment under [`deploy/`](deploy/) installs the systemd units and
+Cloudflare Tunnel ingress used by the live site. The GitHub checkout is the canonical
+overlay source; `rs-sdk` remains the pinned runtime dependency because both modules
+import SDK internals by relative path.
+
+```sh
+./deploy/install.sh --check  # no mutation
+./deploy/install.sh          # tested atomic overlay + controlled restart
+./deploy/verify.sh           # repeatable public verification
+```
+
+Deployment exports committed files with `git archive`, preserves the local
+`worldmap.jag`, never copies credentials, retains rollback directories, and records
+the deployed Git revision. GitHub Actions performs CI only; production credentials
+are not stored in GitHub and deployment remains an explicit local action.
+
 ### Missing asset: `worldmap.jag`
 
 The native map tab needs `spectator/public/worldmap.jag`. It is **deliberately

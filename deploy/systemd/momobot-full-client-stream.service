@@ -1,0 +1,40 @@
+[Unit]
+Description=Momobot full browser-client spectator stream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/moltbot/clawd/rs-sdk
+ExecStart=/usr/bin/node spikes/001-full-client-stream/stream-server.mjs
+Restart=always
+RestartSec=5
+Environment=HOME=/home/moltbot
+Environment=PATH=/home/moltbot/.bun/bin:/usr/local/bin:/usr/bin:/bin
+Environment=BOT_NAME=momobot
+Environment=STREAM_HOST=127.0.0.1
+Environment=STREAM_PORT=3211
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/home/moltbot/clawd/rs-sdk
+MemoryMax=1G
+UMask=0077
+
+[Install]
+WantedBy=default.target

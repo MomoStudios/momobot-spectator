@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { captureIntervalMs, routeRequest } from './stream-core';
+import { captureIntervalMs, redactSecret, routeRequest } from './stream-core';
 
 const status = { browserConnected: true, gameReady: true, frameAgeMs: 40, fps: 7.8, viewers: 1 };
 const assets = {
@@ -9,7 +9,7 @@ const assets = {
 };
 
 describe('stream request routing', () => {
-    test('serves the same viewer under a Funnel path prefix', () => {
+    test('serves the same viewer under a reverse-tunnel path prefix', () => {
         expect(routeRequest('GET', '/client/', status, assets).status).toBe(200);
         expect(routeRequest('GET', '/client/app.js', status, assets).body).toContain('viewer');
         expect(routeRequest('GET', '/styles.css', status, assets).contentType).toContain('text/css');
@@ -28,6 +28,24 @@ describe('stream request routing', () => {
         const health = routeRequest('GET', '/healthz', { ...status, gameReady: false }, assets);
         expect(health.status).toBe(503);
         expect(routeRequest('GET', '/healthz', { ...status, frameAgeMs: 5000 }, assets).status).toBe(503);
+    });
+});
+
+describe('log redaction', () => {
+    test('removes raw and URL-encoded bot passwords from fatal errors', () => {
+        const password = 'p@ ss/雪?&';
+        const componentEncoded = encodeURIComponent(password);
+        const formEncoded = new URLSearchParams({ password }).toString().slice('password='.length);
+        const error = new Error(`raw=${password} component=${componentEncoded} form=${formEncoded}`);
+        const redacted = redactSecret(error, password);
+        expect(redacted).not.toContain(password);
+        expect(redacted).not.toContain(componentEncoded);
+        expect(redacted).not.toContain(formEncoded);
+        expect(redacted.match(/\[REDACTED\]/g)?.length).toBe(3);
+    });
+
+    test('does not alter text when no secret is configured', () => {
+        expect(redactSecret('plain failure', '')).toBe('plain failure');
     });
 });
 

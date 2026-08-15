@@ -21,8 +21,8 @@ retry() {
     return 1
 }
 CURL=(curl -fsS --connect-timeout 3 --max-time 8)
-json_ok() { "${CURL[@]}" "$1" | python3 -c 'import json,sys; assert json.load(sys.stdin) == {"ok": True}'; }
-stream_ready() { "${CURL[@]}" "$1" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["browserConnected"] and d["gameReady"] and d["frameAgeMs"] < 5000'; }
+json_ok() { "${CURL[@]}" "$1" | python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin) == {"ok": True} else 1)'; }
+stream_ready() { "${CURL[@]}" "$1" | python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("browserConnected") and d.get("gameReady") and d.get("frameAgeMs", 999999) < 5000 else 1)'; }
 
 log 'checking deployed source drift'
 command -v rsync >/dev/null
@@ -33,10 +33,13 @@ if [[ -n "$DASHBOARD_DRIFT" || -n "$STREAM_DRIFT" ]]; then
     exit 1
 fi
 
-log 'checking legacy tunnel is inactive'
-if systemctl is-active --quiet tailscaled.service 2>/dev/null || systemctl --user is-active --quiet tailscaled.service 2>/dev/null; then
-    printf '[momobot-verify] ERROR: legacy tailscaled.service is active\n' >&2
-    exit 1
+log 'checking legacy Funnel has no routes'
+if command -v tailscale >/dev/null; then
+    FUNNEL_STATUS=$(tailscale funnel status --json 2>/dev/null) || {
+        printf '[momobot-verify] ERROR: unable to inspect Tailscale Funnel routes\n' >&2
+        exit 1
+    }
+    python3 -c 'import json,sys; raise SystemExit(1 if json.load(sys.stdin) else 0)' <<<"$FUNNEL_STATUS"
 fi
 
 log 'checking services'
@@ -58,8 +61,10 @@ curl -sS --connect-timeout 3 --max-time 8 -D "$BOUNDARY_HEADERS" -o /dev/null "$
 python3 - "$BOUNDARY_HEADERS" <<'PY'
 import sys
 headers = open(sys.argv[1]).read().lower()
-assert "frame-src 'self'" in headers, 'overbroad /client tunnel route is still authoritative'
-assert "connect-src 'self' ws: wss:" not in headers, 'boundary probe reached stream service'
+if "frame-src 'self'" not in headers:
+    raise SystemExit('overbroad /client tunnel route is still authoritative')
+if "connect-src 'self' ws: wss:" in headers:
+    raise SystemExit('boundary probe reached stream service')
 PY
 
 python3 - "$STATE_FILE" <<'PY'
@@ -80,10 +85,12 @@ def walk(value):
             walk(child)
 walk(payload)
 for field in fields:
-    assert not re.search(r'password|api.?key|authorization|credential|gateway.?url|session.?id|secret|token', field, re.I), field
+    if re.search(r'password|api.?key|authorization|credential|gateway.?url|session.?id|secret|token', field, re.I):
+        raise SystemExit(f'private field exposed: {field}')
 for key, allowed in (('gameMessages', {0}), ('chatMessages', {1, 2})):
     for message in state.get(key, []):
-        assert message.get('type') in allowed, (key, message.get('type'))
+        if message.get('type') not in allowed:
+            raise SystemExit(f'private message type exposed: {key}={message.get("type")}')
 PY
 
 log 'checking tunnel metrics'

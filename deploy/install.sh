@@ -52,8 +52,11 @@ done
 if (( ! SKIP_SERVICE_ACTIONS )); then
     command -v systemctl >/dev/null || die "required command not found: systemctl"
     command -v sudo >/dev/null || die "required command not found: sudo"
-    if systemctl is-active --quiet tailscaled.service 2>/dev/null || systemctl --user is-active --quiet tailscaled.service 2>/dev/null; then
-        die "legacy tailscaled.service is still active; disable Funnel before deployment"
+    if command -v tailscale >/dev/null; then
+        FUNNEL_STATUS=$(tailscale funnel status --json 2>/dev/null) || die "unable to inspect Tailscale Funnel routes"
+        FUNNEL_STATE=$(python3 -c 'import json,sys; data=json.load(sys.stdin); print("active" if data else "empty")' <<<"$FUNNEL_STATUS") || \
+            die "unable to parse Tailscale Funnel routes"
+        [[ "$FUNNEL_STATE" == empty ]] || die "legacy Tailscale Funnel routes are still active"
     fi
 fi
 
@@ -139,7 +142,7 @@ restore_file() {
 local_origins_ready() {
     curl -fsS --connect-timeout 3 --max-time 8 http://127.0.0.1:3210/healthz >/dev/null 2>&1 &&
     curl -fsS --connect-timeout 3 --max-time 8 http://127.0.0.1:3211/healthz |
-        python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["browserConnected"] and d["gameReady"] and d["frameAgeMs"] < 5000' >/dev/null 2>&1
+        python3 -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("browserConnected") and d.get("gameReady") and d.get("frameAgeMs", 999999) < 5000 else 1)' >/dev/null 2>&1
 }
 
 wait_for_local_origins() {

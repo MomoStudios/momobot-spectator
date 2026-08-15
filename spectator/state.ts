@@ -246,9 +246,12 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
 
     const events: PublicEvent[] = [];
     const previousSkills = skillMap(previous.skills);
+    const previousSkillsInitialized = (previous.skills ?? []).filter(isPublicSkill)
+        .some(skill => skill.experience > 0 || skill.baseLevel > 1);
     let sequence = 0;
 
     for (const skill of (next.skills ?? []).filter(isPublicSkill)) {
+        if (!previousSkillsInitialized) continue;
         const before = previousSkills.get(skill.name);
         if (!before) continue;
         const xpGained = Math.max(0, skill.experience - before.experience);

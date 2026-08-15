@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildMapModel, formatAge, formatClock, formatNumber, totalLevel } from './public/view-model.js';
+import { buildFocusModel, buildMapModel, describeLocation, formatAge, formatClock, formatDuration, formatNumber, totalLevel } from './public/view-model.js';
 
 const snapshot = {
     player: { worldX: 100, worldZ: 200, level: 1 },
@@ -20,6 +20,24 @@ describe('dashboard view model', () => {
             { kind: 'player', label: 'Scout (3)', dx: -2, dz: 1 },
             { kind: 'self', label: 'Momobot', dx: 0, dz: 0 }
         ]);
+    });
+
+    test('describes spectator context without exposing controller intent', () => {
+        expect(describeLocation(2591, 3336, 0)).toEqual({ name: 'East Ardougne', detail: 'Ground floor · 2591, 3336' });
+        expect(describeLocation(2680, 3417, 0)).toEqual({ name: 'Ranging Guild', detail: 'Ground floor · 2680, 3417' });
+        expect(describeLocation(2934, 3218, 0)).toEqual({ name: 'Rimmington', detail: 'Ground floor · 2934, 3218' });
+        expect(describeLocation(3039, 9775, 0)).toEqual({ name: 'Underground', detail: '3039, 9775' });
+        expect(formatDuration(3_661_000)).toBe('1h 1m');
+        expect(buildFocusModel({
+            activity: 'In dialogue',
+            player: { worldX: 2591, worldZ: 3336, level: 0 },
+            nearby: { npcs: [{ name: 'Elena', distance: 1 }] }
+        })).toEqual({
+            title: 'In dialogue',
+            context: 'Near Elena · East Ardougne',
+            location: 'East Ardougne',
+            locationDetail: 'Ground floor · 2591, 3336'
+        });
     });
 
     test('formats dashboard metrics', () => {

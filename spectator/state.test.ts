@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { deriveEvents, sanitizeState, summarizeActivity } from './state';
+import { deriveEvents, deriveSessionProgress, sanitizeState, summarizeActivity } from './state';
 
 function baseState() {
     return {
@@ -59,6 +59,17 @@ describe('sanitizeState', () => {
 });
 
 describe('deriveEvents', () => {
+    test('groups a level and its XP gain into one highlight', () => {
+        const previous = baseState();
+        const next = baseState();
+        next.tick = 101;
+        next.skills[0] = { name: 'Strength', level: 3, baseLevel: 3, experience: 250 };
+
+        expect(deriveEvents(previous, next, 123456).map(event => event.text)).toEqual([
+            'Strength reached level 3 · +130 XP'
+        ]);
+    });
+
     test('reports meaningful progress without emitting movement noise', () => {
         const previous = baseState();
         const next = baseState();
@@ -70,11 +81,33 @@ describe('deriveEvents', () => {
         next.nearbyNpcs[0].inCombat = true;
 
         expect(deriveEvents(previous, next, 123456).map(event => event.text)).toEqual([
-            'Strength reached level 3',
-            'Gained 130 Strength XP',
+            'Strength reached level 3 · +130 XP',
             'Picked up 25 × Coins',
             'Entered combat with Goblin'
         ]);
+    });
+});
+
+describe('session progress', () => {
+    test('summarizes gains relative to the observer-session baseline', () => {
+        const baseline = baseState();
+        baseline.player.respawnCount = 2;
+        const current = baseState();
+        current.skills[0] = { name: 'Strength', level: 4, baseLevel: 4, experience: 420 };
+        current.skills[1] = { name: 'Attack', level: 99, baseLevel: 99, experience: 1_500_000 };
+        current.player.respawnCount = 3;
+
+        expect(deriveSessionProgress(baseline, current, 1_000, 3_601_000)).toEqual({
+            startedAt: 1_000,
+            durationMs: 3_600_000,
+            xpGained: 1_496_300,
+            xpPerHour: 1_496_300,
+            levelsGained: 85,
+            deaths: 1,
+            skillsMastered: 1,
+            skillCount: 2,
+            leadingSkill: { name: 'Attack', xpGained: 1_496_000, levelsGained: 83 }
+        });
     });
 });
 

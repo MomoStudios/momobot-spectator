@@ -25,8 +25,8 @@ stream_ready() { "${CURL[@]}" "$1" | python3 -c 'import json,sys; d=json.load(sy
 
 log 'checking deployed source drift'
 command -v rsync >/dev/null
-DASHBOARD_DRIFT=$(rsync -ain --omit-dir-times --delete --exclude worldmap.jag "$SOURCE_ROOT/spectator/" "$RS_SDK_ROOT/spectator/")
-STREAM_DRIFT=$(rsync -ain --omit-dir-times --delete "$SOURCE_ROOT/full-client-stream/" "$RS_SDK_ROOT/spikes/001-full-client-stream/")
+DASHBOARD_DRIFT=$(rsync -rlncip --delete --exclude worldmap.jag "$SOURCE_ROOT/spectator/" "$RS_SDK_ROOT/spectator/")
+STREAM_DRIFT=$(rsync -rlncip --delete "$SOURCE_ROOT/full-client-stream/" "$RS_SDK_ROOT/spikes/001-full-client-stream/")
 if [[ -n "$DASHBOARD_DRIFT" || -n "$STREAM_DRIFT" ]]; then
     printf '[momobot-verify] ERROR: deployed overlay differs from canonical source\n%s\n%s\n' "$DASHBOARD_DRIFT" "$STREAM_DRIFT" >&2
     exit 1

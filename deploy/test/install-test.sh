@@ -8,6 +8,18 @@ FAIL=0
 
 pass() { printf 'ok - %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'not ok - %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
+
+# These directives require privileges the user service manager cannot apply.
+if python3 - "$PROJECT_ROOT/deploy/systemd/momobot-spectator.service" "$PROJECT_ROOT/deploy/systemd/momobot-full-client-stream.service" <<'PY'
+import pathlib, sys
+unsupported = ('CapabilityBoundingSet=', 'PrivateDevices=', 'ProtectKernelModules=', 'ProtectKernelLogs=', 'ProtectClock=')
+raise SystemExit(any(line.startswith(unsupported) for path in sys.argv[1:] for line in pathlib.Path(path).read_text().splitlines()))
+PY
+then
+    pass 'user units avoid unsupported hardening directives'
+else
+    fail 'user units avoid unsupported hardening directives'
+fi
 assert_file() { if [[ ! -f "$1" ]]; then fail "$2 (missing $1)"; fi; }
 assert_no_file() { if [[ -e "$1" ]]; then fail "$2 (unexpected $1)"; fi; }
 assert_contains() { if ! grep -Fq "$2" "$1"; then fail "$3"; fi; }

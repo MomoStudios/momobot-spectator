@@ -34,11 +34,17 @@ else
     fail 'committed ingress matches remote /client* routing'
 fi
 
-# Preserving worldmap.jag changes its parent directory mtime; directory times are not source drift.
-if [[ $(python3 -c 'import pathlib; print(pathlib.Path("deploy/verify.sh").read_text().count("--omit-dir-times"))') == 2 ]]; then
-    pass 'drift checks ignore directory timestamps'
+# Preserve Git modes during archive extraction; compare content/symlinks/modes/deletions, never timestamps/owners.
+if python3 - <<'PY'
+import pathlib
+install = pathlib.Path('deploy/install.sh').read_text()
+verify = pathlib.Path('deploy/verify.sh').read_text()
+raise SystemExit(0 if '| tar -xpf -' in install and verify.count('rsync -rlncip --delete') == 2 else 1)
+PY
+then
+    pass 'drift checks use canonical checksums and Git modes'
 else
-    fail 'drift checks ignore directory timestamps'
+    fail 'drift checks use canonical checksums and Git modes'
 fi
 assert_file() { if [[ ! -f "$1" ]]; then fail "$2 (missing $1)"; fi; }
 assert_no_file() { if [[ -e "$1" ]]; then fail "$2 (unexpected $1)"; fi; }

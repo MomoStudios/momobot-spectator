@@ -226,7 +226,7 @@ trap 'rollback 129' HUP
 trap cleanup_stage EXIT
 
 log "exporting committed source $DEPLOY_SHA"
-git -C "$SOURCE_REPO" archive --format=tar "$DEPLOY_SHA" spectator full-client-stream deploy | tar -xf - -C "$TMP_DIR"
+git -C "$SOURCE_REPO" archive --format=tar "$DEPLOY_SHA" spectator full-client-stream deploy | tar -xpf - -C "$TMP_DIR"
 
 if (( ! SKIP_MANIFEST_VALIDATION )); then
     command -v cloudflared >/dev/null || die "cloudflared is required for ingress validation"

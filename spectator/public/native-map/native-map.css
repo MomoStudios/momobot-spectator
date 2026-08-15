@@ -1,0 +1,5 @@
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #08090a; color: #c5cad2; font-family: ui-sans-serif, system-ui, sans-serif; touch-action: none; }
+* { box-sizing: border-box; }
+#canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; background: #08090a; color: #858b95; font-size: 12px; letter-spacing: .02em; transition: opacity .25s ease; }
+#loading.ready { opacity: 0; }

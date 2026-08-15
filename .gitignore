@@ -1,0 +1,28 @@
+# Secrets — NEVER commit
+bot.env
+*.env
+.env
+.env.*
+*.pem
+*.key
+*_rsa
+*_ed25519
+.secrets/
+
+# Game cache assets — not ours to redistribute (see README)
+*.jag
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Logs / runtime
+*.log
+*.pid
+*.sock
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~

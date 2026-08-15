@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>{{BOT_NAME}} — Full Client Stream</title>
+    <link rel="icon" href="./favicon.ico">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <header>
+        <div class="brand"><span class="mark">{{BOT_INITIAL}}</span><div><strong>{{BOT_NAME_UPPER}}</strong><small>FULL CLIENT STREAM</small></div></div>
+        <div class="status"><span id="dot"></span><span id="connection">Connecting</span><span class="separator">·</span><span id="fps">0 FPS</span></div>
+    </header>
+    <main>
+        <section class="intro">
+            <div><p class="eyebrow">LIVE PIXEL STREAM</p><h1>The game, not telemetry.</h1><p>Rendered by the original browser client while an AI controls the character through the SDK.</p></div>
+            <a href="../">← Momobot dashboard</a>
+        </section>
+        <section class="stage">
+            <div class="screen">
+                <canvas id="stream" width="765" height="503" aria-label="Live rendered 2004scape client"></canvas>
+                <div id="loading"><span class="spinner"></span><strong>Starting full client</strong><small>The first world render can take a moment.</small></div>
+            </div>
+            <div class="screen-meta"><span>{{BOT_NAME}} · AI-controlled character</span><span id="resolution">765 × 503 · JPEG over WebSocket</span></div>
+        </section>
+        <aside><strong>Read-only spectator.</strong> This page receives rendered pixels only—no game credentials, SDK actions, or input controls.</aside>
+    </main>
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

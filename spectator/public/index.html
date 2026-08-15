@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#08090a">
+    <title>Momobot Live Observer</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css?v=10">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-mark" aria-hidden="true">M</div>
+            <div>
+                <div class="brand-name">MOMOBOT</div>
+                <div class="brand-subtitle">2004SCAPE OBSERVER</div>
+            </div>
+        </div>
+        <div class="connection-pill" id="connection-pill">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="connection-label">Connecting</span>
+            <span class="divider">·</span>
+            <span id="state-age">waiting for state</span>
+        </div>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <div class="eyebrow">LIVE CHARACTER TELEMETRY</div>
+                <h1>Watching <span id="player-name">Momobot</span></h1>
+                <p class="hero-copy"><span class="activity-orb"></span><span id="activity">Connecting to the game…</span></p>
+            </div>
+            <div class="hero-location">
+                <div class="location-label">CURRENT POSITION</div>
+                <div class="location-value mono" id="location">—, —</div>
+                <div class="location-meta" id="floor">Ground floor</div>
+            </div>
+        </section>
+
+        <section class="metrics" aria-label="Character overview">
+            <article class="metric-card">
+                <div class="metric-label">COMBAT LEVEL</div>
+                <div class="metric-value" id="combat-level">—</div>
+                <div class="metric-note">Current power</div>
+            </article>
+            <article class="metric-card">
+                <div class="metric-label">TOTAL LEVEL</div>
+                <div class="metric-value" id="total-level">—</div>
+                <div class="metric-note"><span id="skill-count">0</span> tracked skills</div>
+            </article>
+            <article class="metric-card">
+                <div class="metric-label">TOTAL XP</div>
+                <div class="metric-value compact" id="total-xp">—</div>
+                <div class="metric-note">Lifetime experience</div>
+            </article>
+            <article class="metric-card vitals-card">
+                <div class="vital-row"><span>Hitpoints</span><strong id="hp-label">— / —</strong></div>
+                <progress id="hp-bar" class="bar hp" max="1" value="0"></progress>
+                <div class="vital-row second"><span>Run energy</span><strong id="energy-label">—%</strong></div>
+                <progress id="energy-bar" class="bar energy" max="100" value="0"></progress>
+            </article>
+        </section>
+
+        <section class="dashboard-grid">
+            <article class="panel map-panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">LOCAL AREA</div>
+                        <h2>Live scene</h2>
+                    </div>
+                    <div class="scene-toolbar">
+                        <div class="map-actions hidden" id="map-actions">
+                            <button id="follow-map" class="map-action active" type="button" aria-pressed="true"><span class="follow-dot"></span>Follow</button>
+                            <a class="map-action" href="https://rs-sdk-demo.fly.dev/mapview" target="_blank" rel="noreferrer">Open ↗</a>
+                        </div>
+                        <div class="scene-tabs" role="tablist" aria-label="Live scene view">
+                            <button id="view-map" class="scene-tab" type="button" role="tab" aria-selected="false">World Map</button>
+                            <button id="view-client" class="scene-tab active" type="button" role="tab" aria-selected="true">Live Client</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="map-wrap native-map-wrap">
+                    <div id="map-scene" class="scene-view hidden">
+                        <iframe id="native-map" src="about:blank" data-src="/native-map/?v=3" title="Interactive native 2004scape world map" sandbox="allow-scripts allow-same-origin"></iframe>
+                        <div class="map-corner mono">DRAG TO PAN · SCROLL TO ZOOM</div>
+                    </div>
+                    <div id="client-scene" class="scene-view client-scene" aria-hidden="false">
+                        <canvas id="client-stream" width="765" height="503" aria-label="Live rendered Momobot game client"></canvas>
+                        <div id="client-loading" class="client-loading"><span class="client-spinner"></span><strong>Connecting to Momobot</strong><small>Read-only rendered client</small></div>
+                    </div>
+                </div>
+                <div class="map-caption"><span id="nearby-count">0 entities nearby</span><span id="map-status">Loading native game map…</span></div>
+            </article>
+
+            <article class="panel timeline-panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">PROGRESS</div>
+                        <h2>Activity timeline</h2>
+                    </div>
+                    <span class="live-badge">LIVE</span>
+                </div>
+                <div class="timeline" id="timeline">
+                    <div class="empty-state">Waiting for meaningful progress…</div>
+                </div>
+            </article>
+
+            <article class="panel skills-panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">CHARACTER</div>
+                        <h2>Skills</h2>
+                    </div>
+                </div>
+                <div class="skills-grid" id="skills"></div>
+            </article>
+
+            <article class="panel loadout-panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">LOADOUT</div>
+                        <h2>Inventory & equipment</h2>
+                    </div>
+                    <span class="slot-count" id="slot-count">0 / 28 slots</span>
+                </div>
+                <div class="subsection-label">EQUIPPED</div>
+                <div class="item-list equipment" id="equipment"><span class="muted">Nothing equipped</span></div>
+                <div class="subsection-label inventory-label">INVENTORY</div>
+                <div class="item-list" id="inventory"><span class="muted">Inventory is empty</span></div>
+            </article>
+
+            <article class="panel messages-panel">
+                <div class="panel-head feed-panel-head">
+                    <div>
+                        <div class="panel-kicker">GAME FEED</div>
+                        <h2>Game feed</h2>
+                    </div>
+                    <div class="scene-tabs feed-tabs" role="tablist" aria-label="Game feed view">
+                        <button id="feed-messages" class="scene-tab feed-tab active" type="button" role="tab" aria-selected="true" aria-controls="feed-messages-panel" tabindex="0">Messages</button>
+                        <button id="feed-chat" class="scene-tab feed-tab" type="button" role="tab" aria-selected="false" aria-controls="feed-chat-panel" tabindex="-1">Chat</button>
+                    </div>
+                </div>
+                <div id="feed-messages-panel" class="feed-panel" role="tabpanel" aria-labelledby="feed-messages">
+                    <div id="dialog-card" class="dialog-card hidden"></div>
+                    <div class="messages" id="game-messages"><div class="empty-state">No recent game messages</div></div>
+                </div>
+                <div id="feed-chat-panel" class="feed-panel" role="tabpanel" aria-labelledby="feed-chat" hidden>
+                    <div class="messages" id="chat-messages"><div class="empty-state">No recent public chat</div></div>
+                </div>
+            </article>
+
+            <article class="panel nearby-panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">SURROUNDINGS</div>
+                        <h2>Nearby</h2>
+                    </div>
+                </div>
+                <div class="nearby-columns">
+                    <div><div class="subsection-label">NPCS</div><div id="nearby-npcs" class="nearby-list"></div></div>
+                    <div><div class="subsection-label">OBJECTS</div><div id="nearby-locs" class="nearby-list"></div></div>
+                </div>
+            </article>
+        </section>
+
+        <footer>
+            <span>Read-only observer · Private 2004scape agent server</span>
+            <span class="mono" id="tick-label">tick —</span>
+        </footer>
+    </main>
+    <script type="module" src="/app.js?v=7"></script>
+</body>
+</html>

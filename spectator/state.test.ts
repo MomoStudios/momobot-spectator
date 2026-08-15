@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { deriveEvents, deriveSessionProgress, sanitizeState, summarizeActivity } from './state';
+import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeState, summarizeActivity } from './state';
 
 function baseState() {
     return {
@@ -92,12 +92,21 @@ describe('session progress', () => {
     test('summarizes gains relative to the observer-session baseline', () => {
         const baseline = baseState();
         baseline.player.respawnCount = 2;
+        baseline.nonCloneable = () => 'live SDK helper';
         const current = baseState();
         current.skills[0] = { name: 'Strength', level: 4, baseLevel: 4, experience: 420 };
         current.skills[1] = { name: 'Attack', level: 99, baseLevel: 99, experience: 1_500_000 };
         current.player.respawnCount = 3;
 
-        expect(deriveSessionProgress(baseline, current, 1_000, 3_601_000)).toEqual({
+        const sessionBaseline = captureSessionBaseline(baseline);
+        expect(sessionBaseline).toEqual({
+            skills: [
+                { name: 'Strength', baseLevel: 2, experience: 120 },
+                { name: 'Attack', baseLevel: 16, experience: 4000 }
+            ],
+            respawnCount: 2
+        });
+        expect(deriveSessionProgress(sessionBaseline, current, 1_000, 3_601_000)).toEqual({
             startedAt: 1_000,
             durationMs: 3_600_000,
             xpGained: 1_496_300,

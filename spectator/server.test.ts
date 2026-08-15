@@ -21,6 +21,12 @@ describe('spectator static assets', () => {
         expect(html).toContain('>Chat</button>');
         expect(html).not.toContain('>Game Messages</button>');
         expect(html).not.toContain('>Game Chat</button>');
+        expect(html).toContain('id="current-focus"');
+        expect(html).toContain('id="session-xp"');
+        expect(html).toContain('id="mission-progress"');
+        expect(html).toContain('id="fullscreen-client"');
+        expect(html).toContain('<details class="detail-panel');
+        expect(html).not.toContain('Watching <span');
     });
 });
 

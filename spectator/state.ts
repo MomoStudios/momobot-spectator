@@ -8,6 +8,18 @@ export interface PublicEvent {
     text: string;
 }
 
+export interface SessionProgress {
+    startedAt: number;
+    durationMs: number;
+    xpGained: number;
+    xpPerHour: number;
+    levelsGained: number;
+    deaths: number;
+    skillsMastered: number;
+    skillCount: number;
+    leadingSkill: { name: string; xpGained: number; levelsGained: number } | null;
+}
+
 export interface PublicSnapshot {
     connected: boolean;
     observedAt: number;
@@ -184,6 +196,32 @@ function event(at: number, tick: number, sequence: number, kind: PublicEvent['ki
     return { id: `${tick}-${sequence}-${kind}`, at, tick, kind, text };
 }
 
+export function deriveSessionProgress(baseline: BotWorldState, current: BotWorldState, startedAt: number, now: number = Date.now()): SessionProgress {
+    const baselineSkills = skillMap(baseline.skills);
+    const gains = (current.skills ?? []).filter(isPublicSkill).map(skill => {
+        const before = baselineSkills.get(skill.name);
+        return {
+            name: skill.name,
+            xpGained: Math.max(0, skill.experience - (before?.experience ?? skill.experience)),
+            levelsGained: Math.max(0, skill.baseLevel - (before?.baseLevel ?? skill.baseLevel))
+        };
+    });
+    const durationMs = Math.max(0, now - startedAt);
+    const xpGained = gains.reduce((sum, skill) => sum + skill.xpGained, 0);
+    const leadingSkill = [...gains].sort((a, b) => b.xpGained - a.xpGained || b.levelsGained - a.levelsGained)[0] ?? null;
+    return {
+        startedAt,
+        durationMs,
+        xpGained,
+        xpPerHour: durationMs > 0 ? Math.round(xpGained * 3_600_000 / durationMs) : 0,
+        levelsGained: gains.reduce((sum, skill) => sum + skill.levelsGained, 0),
+        deaths: Math.max(0, (current.player?.respawnCount ?? 0) - (baseline.player?.respawnCount ?? 0)),
+        skillsMastered: (current.skills ?? []).filter(skill => isPublicSkill(skill) && skill.baseLevel >= 99).length,
+        skillCount: (current.skills ?? []).filter(isPublicSkill).length,
+        leadingSkill: leadingSkill && (leadingSkill.xpGained > 0 || leadingSkill.levelsGained > 0) ? leadingSkill : null
+    };
+}
+
 export function deriveEvents(previous: BotWorldState | null, next: BotWorldState, at: number = Date.now()): PublicEvent[] {
     const nextPlayer = next.player;
     if (!nextPlayer) return [];
@@ -197,11 +235,13 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
     for (const skill of (next.skills ?? []).filter(isPublicSkill)) {
         const before = previousSkills.get(skill.name);
         if (!before) continue;
-        if (skill.baseLevel > before.baseLevel) {
-            events.push(event(at, next.tick, sequence++, 'level', `${skill.name} reached level ${skill.baseLevel}`));
-        }
-        if (skill.experience > before.experience) {
-            events.push(event(at, next.tick, sequence++, 'xp', `Gained ${skill.experience - before.experience} ${skill.name} XP`));
+        const xpGained = Math.max(0, skill.experience - before.experience);
+        const levelGained = skill.baseLevel > before.baseLevel;
+        if (levelGained) {
+            const suffix = xpGained > 0 ? ` · +${xpGained} XP` : '';
+            events.push(event(at, next.tick, sequence++, 'level', `${skill.name} reached level ${skill.baseLevel}${suffix}`));
+        } else if (xpGained > 0) {
+            events.push(event(at, next.tick, sequence++, 'xp', `Gained ${xpGained} ${skill.name} XP`));
         }
     }
 

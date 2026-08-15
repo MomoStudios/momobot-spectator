@@ -1,6 +1,6 @@
 import { BotSDK, deriveGatewayUrl } from '../sdk/index';
 import type { BotWorldState, ConnectionState, SDKConfig } from '../sdk/types';
-import { deriveEvents, sanitizeState, type PublicEvent, type PublicSnapshot } from './state';
+import { deriveEvents, deriveSessionProgress, sanitizeState, type PublicEvent, type PublicSnapshot } from './state';
 
 interface Asset {
     body: BodyInit;
@@ -157,6 +157,8 @@ async function main(): Promise<void> {
 
     let connection: ConnectionState = 'connecting';
     let previous: BotWorldState | null = null;
+    let sessionBaseline: BotWorldState | null = null;
+    let sessionStartedAt = 0;
     let state: PublicSnapshot | null = null;
     let events: PublicEvent[] = [];
 
@@ -164,6 +166,10 @@ async function main(): Promise<void> {
     sdk.onStateUpdate(next => {
         if (!next.player) return;
         const now = Date.now();
+        if (!sessionBaseline) {
+            sessionBaseline = structuredClone(next);
+            sessionStartedAt = now;
+        }
         const freshEvents = deriveEvents(previous, next, now);
         if (freshEvents.length) events = [...freshEvents, ...events].slice(0, 100);
         state = sanitizeState(next, now);
@@ -174,6 +180,7 @@ async function main(): Promise<void> {
         connection,
         state,
         events,
+        session: sessionBaseline && previous ? deriveSessionProgress(sessionBaseline, previous, sessionStartedAt) : null,
         serverTime: Date.now()
     });
     const assets = await loadAssets();

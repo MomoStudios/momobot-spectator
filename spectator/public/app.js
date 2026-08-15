@@ -1,4 +1,4 @@
-import { formatAge, formatClock, formatNumber, totalLevel } from './view-model.js?v=3';
+import { buildFocusModel, formatAge, formatClock, formatDuration, formatNumber, totalLevel } from './view-model.js?v=4';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedTabForKey, normalizeFeedTab } from './feed-view.js?v=1';
 
@@ -45,10 +45,11 @@ function renderConnection(payload) {
 
 function renderVitals(state) {
     const { player, skills } = state;
-    setText('player-name', player.name);
-    setText('activity', state.activity);
-    setText('location', `${player.worldX}, ${player.worldZ}`);
-    setText('floor', player.level === 0 ? 'Ground floor' : `Floor ${player.level}`);
+    const focus = buildFocusModel(state);
+    setText('current-focus', focus.title);
+    setText('current-context', focus.context);
+    setText('location', focus.location);
+    setText('location-detail', focus.locationDetail);
     setText('combat-level', player.combatLevel);
     setText('total-level', totalLevel(skills));
     setText('skill-count', skills.length);
@@ -60,6 +61,19 @@ function renderVitals(state) {
     $('energy-bar').value = player.runEnergy;
     setText('slot-count', `${state.inventory.length} / 28 slots`);
     setText('tick-label', `tick ${state.tick} · rev ${state.revision}`);
+}
+
+function renderSession(session, state) {
+    const mastered = session?.skillsMastered ?? state.skills.filter(skill => skill.baseLevel >= 99).length;
+    const skillCount = session?.skillCount ?? state.skills.length;
+    setText('session-duration', formatDuration(session?.durationMs ?? 0));
+    setText('session-xp', formatNumber(session?.xpGained ?? 0));
+    setText('session-rate', formatNumber(session?.xpPerHour ?? 0));
+    setText('session-levels', formatNumber(session?.levelsGained ?? 0));
+    setText('session-leading', session?.leadingSkill ? `${session.leadingSkill.name} · +${formatNumber(session.leadingSkill.xpGained)} XP` : 'No gains yet');
+    setText('mission-progress', `${mastered} / ${skillCount}`);
+    $('mission-bar').max = Math.max(1, skillCount);
+    $('mission-bar').value = mastered;
 }
 
 function renderSkills(skills) {
@@ -180,6 +194,7 @@ function renderNearby(state) {
     if (!npcGroups.length) npcContainer.append(element('div', 'muted', 'None in view'));
     if (!locGroups.length) locContainer.append(element('div', 'muted', 'None in view'));
     nearbyEntityCount = state.nearby.npcs.length + state.nearby.players.length + state.nearby.locs.length + state.nearby.groundItems.length;
+    setText('detail-nearby-count', nearbyEntityCount);
     updateSceneCaption();
 }
 
@@ -344,6 +359,7 @@ function render(payload) {
     renderConnection(payload);
     if (!payload.state) return;
     renderVitals(payload.state);
+    renderSession(payload.session, payload.state);
     renderSkills(payload.state.skills);
     renderItems(payload.state);
     renderTimeline(payload.events || []);
@@ -361,7 +377,8 @@ async function poll() {
         render(await response.json());
     } catch (error) {
         renderConnection({ connection: 'disconnected', state: null });
-        setText('activity', 'Observer feed unavailable');
+        setText('current-focus', 'Observer feed unavailable');
+        setText('current-context', 'The public state service is reconnecting');
     } finally {
         polling = false;
     }
@@ -380,6 +397,13 @@ $('follow-map').addEventListener('click', () => {
 });
 $('view-map').addEventListener('click', () => setScene('map'));
 $('view-client').addEventListener('click', () => setScene('client'));
+$('fullscreen-client').addEventListener('click', async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await $('map-panel').requestFullscreen();
+});
+document.addEventListener('fullscreenchange', () => {
+    setText('fullscreen-client', document.fullscreenElement ? 'Exit theater' : 'Theater');
+});
 for (const name of ['messages', 'chat']) {
     const tab = $(`feed-${name}`);
     tab.addEventListener('click', () => setFeedTab(name));

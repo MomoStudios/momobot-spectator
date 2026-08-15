@@ -1,0 +1,36 @@
+[Unit]
+Description=Momobot public spectator dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/moltbot/clawd/rs-sdk
+ExecStart=/home/moltbot/.bun/bin/bun spectator/server.ts --bot=momobot --port=3210 --host=127.0.0.1
+Restart=always
+RestartSec=3
+Environment=HOME=/home/moltbot
+Environment=PATH=/home/moltbot/.bun/bin:/usr/local/bin:/usr/bin:/bin
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/home/moltbot/clawd/rs-sdk
+UMask=0077
+
+[Install]
+WantedBy=default.target

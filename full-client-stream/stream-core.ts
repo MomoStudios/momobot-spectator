@@ -23,6 +23,22 @@ export function captureIntervalMs(viewers: number): number {
     return viewers > 0 ? 125 : 1000;
 }
 
+export function redactSecret(value: unknown, secret: string): string {
+    let text = value instanceof Error ? value.message : String(value);
+    if (!secret) return text;
+    const componentEncoded = encodeURIComponent(secret);
+    const formEncoded = new URLSearchParams({ secret }).toString().slice('secret='.length);
+    const variants = [...new Set([
+        secret,
+        componentEncoded,
+        componentEncoded.toLowerCase(),
+        formEncoded,
+        formEncoded.toLowerCase()
+    ])].filter(Boolean).sort((left, right) => right.length - left.length);
+    for (const variant of variants) text = text.replaceAll(variant, '[REDACTED]');
+    return text;
+}
+
 export function routeRequest(method: string, url: string, status: StreamStatus, assets: StreamAssets): RoutedResponse {
     if (method !== 'GET' && method !== 'HEAD') {
         return { status: 405, body: 'Method not allowed', contentType: 'text/plain; charset=utf-8', cacheControl: 'no-store' };

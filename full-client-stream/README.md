@@ -17,7 +17,7 @@ The repository's existing full browser client runs correctly in headless Chromiu
 ### Measured evidence
 
 - Native rendered canvas: **765 × 503**.
-- Public stream: **8.0 FPS** measured over 12 seconds through Tailscale Funnel.
+- Public stream: **8.0 FPS** measured over 12 seconds through the original Tailscale Funnel deployment; the current production origin uses Cloudflare Tunnel.
 - 97 frames delivered; average JPEG frame **78,268 bytes**.
 - Bandwidth: **5.06 Mbps per active viewer** at JPEG quality 0.72.
 - Browser E2E: no console/page errors, live canvas non-black ratio >96%, no form/input/button controls.
@@ -29,7 +29,7 @@ The repository's existing full browser client runs correctly in headless Chromiu
 - The existing `/bot` browser client auto-logged in from server-side credentials.
 - The original software-rendered game canvas works in headless Chromium.
 - `canvas.toDataURL('image/jpeg')` is much faster than Chrome element screenshots and sustains the target frame rate.
-- WebSocket delivery through Funnel works under the `/client` path.
+- Same-origin WebSocket delivery works through the `/client` path; production now uses Cloudflare Tunnel.
 - Idle capture drops to 1 FPS; active viewers raise it to 8 FPS.
 - Credentials remain in the server-side browser process; spectators receive JPEG bytes only.
 - A persistent systemd user service keeps the client and stream alive.
@@ -48,6 +48,6 @@ The Momobot handoff stopped only the lite game client, left the existing SDK con
 
 ## Live prototype
 
-- Viewer: `https://moltbot.story-nessie.ts.net/client/`
+- Viewer: `https://momobot.runtimeexception.net/client/`
 - Character: `Momobot`
 - Service: `momobot-full-client-stream.service`

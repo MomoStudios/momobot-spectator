@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import puppeteer from 'puppeteer';
 import { WebSocket, WebSocketServer } from 'ws';
-import { captureIntervalMs, routeRequest } from './stream-core.ts';
+import { captureIntervalMs, redactSecret, routeRequest } from './stream-core.ts';
 
 const ROOT = new URL('.', import.meta.url);
 const PORT = Number(process.env.STREAM_PORT || 3211);
@@ -17,6 +17,8 @@ const env = Object.fromEntries(envText.split(/\r?\n/).flatMap(line => {
     return [[trimmed.slice(0, index), trimmed.slice(index + 1)]];
 }));
 const username = env.BOT_USERNAME || configuredBot;
+if (!env.PASSWORD) throw new Error('bot.env is missing PASSWORD');
+const redact = value => redactSecret(value, env.PASSWORD);
 if (username.toLowerCase() !== configuredBot.toLowerCase()) throw new Error('BOT_NAME does not match bot.env');
 const origin = env.SERVER ? `https://${env.SERVER}` : 'http://localhost:8888';
 const clientUrl = new URL('/bot', origin);
@@ -127,9 +129,9 @@ async function launchClient() {
     });
     browserConnected = true;
     page = await browser.newPage();
-    page.on('pageerror', error => console.error('[full-client] page error:', String(error).replaceAll(env.PASSWORD, '[REDACTED]')));
+    page.on('pageerror', error => console.error('[full-client] page error:', redact(error)));
     page.on('console', message => {
-        if (message.type() === 'error') console.error('[full-client] console:', message.text().replaceAll(env.PASSWORD, '[REDACTED]'));
+        if (message.type() === 'error') console.error('[full-client] console:', redact(message.text()));
     });
     await page.goto(clientUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await waitForRenderedWorld();
@@ -165,7 +167,7 @@ async function captureLoop() {
                 }
             } catch (error) {
                 gameReady = false;
-                console.error('[stream] capture failed:', error instanceof Error ? error.message : String(error));
+                console.error('[stream] capture failed:', redact(error));
                 throw error;
             }
         }
@@ -190,7 +192,7 @@ server.listen(PORT, HOST, async () => {
         await launchClient();
         await captureLoop();
     } catch (error) {
-        console.error('[stream] fatal:', error instanceof Error ? error.message : String(error));
+        console.error('[stream] fatal:', redact(error));
         await shutdown();
         process.exit(1);
     }

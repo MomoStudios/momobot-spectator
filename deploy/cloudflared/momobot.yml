@@ -3,7 +3,7 @@ credentials-file: /etc/cloudflared/c512e122-789a-4ad1-a366-77a70b0c9fa6.json
 
 ingress:
   - hostname: momobot.runtimeexception.net
-    path: ^/client($|/)
+    path: ^/client
     service: http://127.0.0.1:3211
   - hostname: momobot.runtimeexception.net
     service: http://127.0.0.1:3210

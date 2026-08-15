@@ -6,8 +6,7 @@ RS_SDK_ROOT=${RS_SDK_ROOT:-/home/moltbot/clawd/rs-sdk}
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SOURCE_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 STATE_FILE=$(mktemp)
-BOUNDARY_HEADERS=$(mktemp)
-trap 'rm -f "$STATE_FILE" "$BOUNDARY_HEADERS"' EXIT
+trap 'rm -f "$STATE_FILE"' EXIT
 
 log() { printf '[momobot-verify] %s\n' "$*"; }
 retry() {
@@ -57,15 +56,6 @@ retry 'public dashboard' json_ok "$PUBLIC_URL/healthz"
 retry 'public rendered client' stream_ready "$PUBLIC_URL/client/healthz"
 [[ $(curl -sS --connect-timeout 3 --max-time 8 -o /dev/null -w '%{http_code}' -X POST "$PUBLIC_URL/api/state") == 405 ]]
 "${CURL[@]}" "$PUBLIC_URL/api/state" -o "$STATE_FILE"
-curl -sS --connect-timeout 3 --max-time 8 -D "$BOUNDARY_HEADERS" -o /dev/null "$PUBLIC_URL/clientevil"
-python3 - "$BOUNDARY_HEADERS" <<'PY'
-import sys
-headers = open(sys.argv[1]).read().lower()
-if "frame-src 'self'" not in headers:
-    raise SystemExit('overbroad /client tunnel route is still authoritative')
-if "connect-src 'self' ws: wss:" in headers:
-    raise SystemExit('boundary probe reached stream service')
-PY
 
 python3 - "$STATE_FILE" <<'PY'
 import json

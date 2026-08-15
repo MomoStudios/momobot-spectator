@@ -44,7 +44,16 @@ Drives a real headless browser client with Puppeteer, captures the game canvas,
 and pushes frames to viewers over WebSocket. Capture rate adapts: 125 ms with
 viewers connected, 1000 ms when idle.
 
-This costs real CPU per viewer, unlike the JSON dashboard.
+Cost is mostly **fixed, not per-viewer**. The expensive part — running the
+headless client and capturing the canvas — is paid continuously whether or not
+anyone is watching, and is shared across all viewers. Connecting the *first*
+viewer raises capture rate 8x (1000 ms -> 125 ms); each additional viewer only
+adds a WebSocket send of the already-captured frame. In practice the scaling
+limit here is egress bandwidth, not CPU.
+
+By contrast the JSON dashboard costs essentially nothing either way: the SDK
+connection runs regardless, and serving `/api/state` just serializes an object
+that already exists. No rendering is involved.
 
 ---
 

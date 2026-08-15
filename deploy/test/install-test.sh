@@ -128,6 +128,24 @@ else
     cat "$FIXTURE/check.log" >&2
 fi
 
+# Non-empty Tailscale Funnel routes must block deployment even when service checks are otherwise healthy.
+make_fixture
+mkdir -p "$FIXTURE/bin"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 3' > "$FIXTURE/bin/systemctl"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" '\''{"Web":{"443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:3210"}}}}}'\''' > "$FIXTURE/bin/tailscale"
+chmod 0755 "$FIXTURE/bin/systemctl" "$FIXTURE/bin/tailscale"
+if PATH="$FIXTURE/bin:$PATH" PYTHONOPTIMIZE=1 \
+    SOURCE_REPO="$SOURCE" RS_SDK_ROOT="$RUNTIME" \
+    SYSTEMD_USER_DIR="$OUTPUT/user-systemd" SYSTEMD_SYSTEM_DIR="$OUTPUT/system-systemd" \
+    CLOUDFLARED_CONFIG_DIR="$OUTPUT/cloudflared" DEPLOY_STATE_DIR="$OUTPUT/state" \
+    SKIP_TESTS=1 SKIP_MANIFEST_VALIDATION=1 SKIP_SERVICE_ACTIONS=0 \
+    "$DEPLOY_SCRIPT" --check >"$FIXTURE/funnel.log" 2>&1; then
+    fail 'active Funnel routes rejected'
+else
+    assert_contains "$FIXTURE/funnel.log" 'Funnel routes' 'active Funnel routes give actionable error'
+    pass 'active Funnel routes rejected'
+fi
+
 # A failed check-mode test must not restart production before any mutation.
 make_fixture
 mkdir -p "$FIXTURE/bin"

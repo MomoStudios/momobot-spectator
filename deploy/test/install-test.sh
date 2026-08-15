@@ -21,6 +21,19 @@ else
     fail 'user units avoid unsupported hardening directives'
 fi
 
+# Cloudflare's remote control plane is authoritative and implements the requested /client* prefix.
+if python3 - <<'PY'
+import pathlib
+config = pathlib.Path('deploy/cloudflared/momobot.yml').read_text()
+verify = pathlib.Path('deploy/verify.sh').read_text()
+raise SystemExit(0 if '    path: ^/client\n' in config and 'clientevil' not in verify else 1)
+PY
+then
+    pass 'committed ingress matches remote /client* routing'
+else
+    fail 'committed ingress matches remote /client* routing'
+fi
+
 # Preserving worldmap.jag changes its parent directory mtime; directory times are not source drift.
 if [[ $(python3 -c 'import pathlib; print(pathlib.Path("deploy/verify.sh").read_text().count("--omit-dir-times"))') == 2 ]]; then
     pass 'drift checks ignore directory timestamps'

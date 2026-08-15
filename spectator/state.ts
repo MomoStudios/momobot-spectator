@@ -8,6 +8,11 @@ export interface PublicEvent {
     text: string;
 }
 
+export interface SessionBaseline {
+    skills: Array<{ name: string; baseLevel: number; experience: number }>;
+    respawnCount: number;
+}
+
 export interface SessionProgress {
     startedAt: number;
     durationMs: number;
@@ -196,8 +201,19 @@ function event(at: number, tick: number, sequence: number, kind: PublicEvent['ki
     return { id: `${tick}-${sequence}-${kind}`, at, tick, kind, text };
 }
 
-export function deriveSessionProgress(baseline: BotWorldState, current: BotWorldState, startedAt: number, now: number = Date.now()): SessionProgress {
-    const baselineSkills = skillMap(baseline.skills);
+export function captureSessionBaseline(state: BotWorldState): SessionBaseline {
+    return {
+        skills: (state.skills ?? []).filter(isPublicSkill).map(skill => ({
+            name: skill.name,
+            baseLevel: skill.baseLevel,
+            experience: skill.experience
+        })),
+        respawnCount: state.player?.respawnCount ?? 0
+    };
+}
+
+export function deriveSessionProgress(baseline: SessionBaseline, current: BotWorldState, startedAt: number, now: number = Date.now()): SessionProgress {
+    const baselineSkills = new Map(baseline.skills.map(skill => [skill.name, skill]));
     const gains = (current.skills ?? []).filter(isPublicSkill).map(skill => {
         const before = baselineSkills.get(skill.name);
         return {
@@ -215,7 +231,7 @@ export function deriveSessionProgress(baseline: BotWorldState, current: BotWorld
         xpGained,
         xpPerHour: durationMs > 0 ? Math.round(xpGained * 3_600_000 / durationMs) : 0,
         levelsGained: gains.reduce((sum, skill) => sum + skill.levelsGained, 0),
-        deaths: Math.max(0, (current.player?.respawnCount ?? 0) - (baseline.player?.respawnCount ?? 0)),
+        deaths: Math.max(0, (current.player?.respawnCount ?? 0) - baseline.respawnCount),
         skillsMastered: (current.skills ?? []).filter(skill => isPublicSkill(skill) && skill.baseLevel >= 99).length,
         skillCount: (current.skills ?? []).filter(isPublicSkill).length,
         leadingSkill: leadingSkill && (leadingSkill.xpGained > 0 || leadingSkill.levelsGained > 0) ? leadingSkill : null

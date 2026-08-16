@@ -78,6 +78,18 @@ describe('deriveEvents', () => {
         expect(deriveEvents(previous, next, 123456).filter(event => event.kind === 'inventory')).toEqual([]);
     });
 
+    test('ignores a transient uninitialized state after real state arrives', () => {
+        const previous = baseState();
+        previous.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc' };
+        const next = baseState();
+        next.tick = 1;
+        next.skills = next.skills.map(skill => ({ ...skill, level: 1, baseLevel: 1, experience: 0 }));
+        next.inventory = [];
+        next.player.combat = { inCombat: false, targetIndex: -1, targetType: 'none' };
+
+        expect(deriveEvents(previous, next, 123456)).toEqual([]);
+    });
+
     test('groups a level and its XP gain into one highlight', () => {
         const previous = baseState();
         const next = baseState();

@@ -24,6 +24,11 @@ describe('spectator static assets', () => {
         expect(html).toContain('id="current-focus"');
         expect(html).toContain('id="session-xp"');
         expect(html).toContain('id="mission-progress"');
+        expect(html).toContain('id="short-term-mission"');
+        expect(html).toContain('id="mission-tasks"');
+        expect(html).toContain('id="mission-updated"');
+        expect(html).toContain('id="long-term-progress"');
+        expect(html).toContain('>SHORT-TERM MISSION</div>');
         expect(html).toContain('id="fullscreen-client"');
         expect(html).toContain('<details class="detail-panel');
         expect(html).not.toContain('Watching <span');

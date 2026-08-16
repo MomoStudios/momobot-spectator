@@ -34,7 +34,10 @@ The loop:
    (level-ups, XP gains, inventory changes, combat, death). Last 100 kept.
 3. `sanitizeState()` maps the raw state to a `PublicSnapshot` — this is the
    privacy boundary (see below).
-4. The browser polls `/api/state`.
+4. `loadPublicMission()` reads `bots/<botname>/public-mission.json` as a separate,
+   explicit public-intent channel. The schema allowlists a title, objective,
+   timestamp, and at most six `done`/`active`/`pending` tasks.
+5. The browser polls `/api/state`.
 
 Endpoints: `/api/state`, `/healthz` (503 unless connected *and* state exists).
 
@@ -82,6 +85,11 @@ needs an iframe and a worker.
 **Password scrubbing:** the stream server strips `env.PASSWORD` from page errors
 and console output before logging.
 
+**Public mission boundary:** the dashboard never derives intent from controller
+transcripts, process arguments, or private planning. It accepts only the bounded
+`PublicMission` schema from `bots/<botname>/public-mission.json`; malformed files
+fail closed to an empty mission card and unknown fields are discarded.
+
 Tests assert these properties — see `spectator/state.test.ts`, which checks that
 a private message and a password fixture never appear in serialized output.
 
@@ -113,6 +121,27 @@ node spikes/001-full-client-stream/stream-server.mjs
 ```
 
 Credentials come from `bots/<botname>/bot.env`, which is **never** committed.
+
+### Publishing the short-term mission
+
+The mission file is local runtime state, not repository content. Update it with the
+included atomic writer from inside the rs-sdk checkout:
+
+```sh
+bun spectator/set-public-mission.ts \
+  --bot=momobot \
+  --title="Complete Family Crest" \
+  --objective="Recover the remaining crest pieces and return the completed crest." \
+  --task="done:Complete Caleb's branch" \
+  --task="active:Complete Avan's branch" \
+  --task="pending:Defeat Chronozon"
+```
+
+Repeat `--task` up to six times. Valid statuses are `done`, `active`, and `pending`.
+The writer replaces `bots/<botname>/public-mission.json` atomically with mode `0644`;
+the spectator reloads it within one second without a service restart. Publish only
+viewer-safe outcomes and steps—never controller reasoning, credentials, or private
+messages.
 
 ### Production deployment
 

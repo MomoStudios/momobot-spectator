@@ -1,6 +1,7 @@
 import { BotSDK, deriveGatewayUrl } from '../sdk/index';
 import type { BotWorldState, ConnectionState, SDKConfig } from '../sdk/types';
 import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeState, type PublicEvent, type PublicSnapshot, type SessionBaseline } from './state';
+import { loadPublicMission, type PublicMission } from './mission';
 
 interface Asset {
     body: BodyInit;
@@ -161,6 +162,11 @@ async function main(): Promise<void> {
     let sessionStartedAt = 0;
     let state: PublicSnapshot | null = null;
     let events: PublicEvent[] = [];
+    let mission: PublicMission | null = null;
+    const missionPath = `${import.meta.dir}/../bots/${botName}/public-mission.json`;
+    const refreshMission = async () => { mission = await loadPublicMission(missionPath); };
+    await refreshMission();
+    const missionTimer = setInterval(() => { void refreshMission(); }, 1_000);
 
     sdk.onConnectionStateChange(next => { connection = next; });
     sdk.onStateUpdate(next => {
@@ -180,6 +186,7 @@ async function main(): Promise<void> {
         connection,
         state,
         events,
+        mission,
         session: sessionBaseline && previous ? deriveSessionProgress(sessionBaseline, previous, sessionStartedAt) : null,
         serverTime: Date.now()
     });
@@ -193,6 +200,7 @@ async function main(): Promise<void> {
         .catch(error => console.error(`[spectator] Initial connection failed; automatic retries remain enabled: ${error instanceof Error ? error.message : String(error)}`));
 
     const shutdown = () => {
+        clearInterval(missionTimer);
         sdk.disconnect();
         server.stop();
         process.exit(0);

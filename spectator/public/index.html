@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#08090a">
     <title>Momobot Live Observer</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/styles.css?v=12">
+    <link rel="stylesheet" href="/styles.css?v=13">
 </head>
 <body>
     <header class="topbar">
@@ -29,20 +29,46 @@
     <main class="shell">
         <section class="story-grid" aria-label="Current Momobot activity">
             <article class="now-card">
-                <div class="eyebrow">LIVE NOW</div>
-                <h1 id="current-focus">Connecting to Momobot…</h1>
-                <p class="focus-context"><span class="activity-orb"></span><span id="current-context">Waiting for observable game state</span></p>
-                <div class="now-meta">
-                    <div class="place-block">
-                        <span class="meta-label">LOCATION</span>
-                        <strong id="location">Gielinor</strong>
-                        <span class="mono" id="location-detail">—, —</span>
+                <div class="now-layout">
+                    <div class="now-copy">
+                        <div>
+                            <div class="eyebrow">LIVE NOW</div>
+                            <h1 id="current-focus">Connecting to Momobot…</h1>
+                            <p class="focus-context"><span class="activity-orb"></span><span id="current-context">Waiting for observable game state</span></p>
+                        </div>
+                        <div class="now-meta">
+                            <div class="place-block">
+                                <span class="meta-label">LOCATION</span>
+                                <strong id="location">Gielinor</strong>
+                                <span class="mono" id="location-detail">—, —</span>
+                            </div>
+                            <div class="now-vitals" aria-label="Current vitals">
+                                <div class="now-vital-row"><span>HP</span><strong class="mono" id="now-hp-label">— / —</strong></div>
+                                <progress id="now-hp-bar" class="bar hp" max="1" value="0"></progress>
+                                <div class="now-vital-row energy"><span>RUN</span><strong class="mono" id="now-energy-label">—%</strong></div>
+                                <progress id="now-energy-bar" class="bar energy" max="100" value="0"></progress>
+                            </div>
+                        </div>
                     </div>
-                    <dl class="identity-stats" aria-label="Lifetime character stats">
-                        <div><dt>Combat</dt><dd id="combat-level">—</dd></div>
-                        <div><dt>Total</dt><dd id="total-level">—</dd></div>
-                        <div><dt>XP</dt><dd id="total-xp">—</dd></div>
-                    </dl>
+                    <section class="vicinity-panel" aria-labelledby="vicinity-title">
+                        <div class="vicinity-head">
+                            <span class="meta-label" id="vicinity-title">VICINITY</span>
+                            <span class="mono" id="vicinity-scale">8 TILE RADIUS</span>
+                        </div>
+                        <div class="vicinity-field" id="vicinity-field" role="img" aria-label="Waiting for nearby world state">
+                            <span class="vicinity-axis north" aria-hidden="true">N</span>
+                            <span class="vicinity-ring outer" aria-hidden="true"></span>
+                            <span class="vicinity-ring inner" aria-hidden="true"></span>
+                            <span class="vicinity-crosshair horizontal" aria-hidden="true"></span>
+                            <span class="vicinity-crosshair vertical" aria-hidden="true"></span>
+                            <div id="vicinity-markers" aria-hidden="true"></div>
+                            <span class="vicinity-self" aria-hidden="true"><i></i><b>Momobot</b></span>
+                        </div>
+                        <div class="vicinity-footer">
+                            <span id="vicinity-summary">Waiting for nearby world state</span>
+                            <span class="vicinity-legend" aria-hidden="true"><i class="npc"></i>NPC <i class="player"></i>PLAYER <i class="item"></i>ITEM <i class="loc"></i>OBJECT</span>
+                        </div>
+                    </section>
                 </div>
             </article>
 
@@ -188,6 +214,6 @@
             <span class="mono" id="tick-label">tick —</span>
         </footer>
     </main>
-    <script type="module" src="/app.js?v=9"></script>
+    <script type="module" src="/app.js?v=10"></script>
 </body>
 </html>

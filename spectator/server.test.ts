@@ -22,6 +22,9 @@ describe('spectator static assets', () => {
         expect(html).not.toContain('>Game Messages</button>');
         expect(html).not.toContain('>Game Chat</button>');
         expect(html).toContain('id="current-focus"');
+        expect(html).toContain('id="vicinity-field"');
+        expect(html).toContain('id="vicinity-markers"');
+        expect(html).toContain('id="vicinity-summary"');
         expect(html).toContain('id="session-xp"');
         expect(html).toContain('id="mission-progress"');
         expect(html).toContain('id="short-term-mission"');

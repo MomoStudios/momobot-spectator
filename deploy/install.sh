@@ -147,7 +147,7 @@ local_origins_ready() {
 
 wait_for_local_origins() {
     local attempt
-    for (( attempt=1; attempt<=45; attempt++ )); do
+    for (( attempt=1; attempt<=90; attempt++ )); do
         local_origins_ready && return 0
         sleep 1
     done

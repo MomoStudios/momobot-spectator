@@ -34,6 +34,19 @@ else
     fail 'committed ingress matches remote /client* routing'
 fi
 
+# Cold rendered-client startup has exceeded 45s in production; deployment and rollback must allow a safe margin.
+if python3 - <<'PY'
+import pathlib, re
+install = pathlib.Path('deploy/install.sh').read_text()
+match = re.search(r'attempt<=([0-9]+)', install)
+raise SystemExit(0 if match and int(match.group(1)) >= 90 else 1)
+PY
+then
+    pass 'origin readiness allows rendered-client cold starts'
+else
+    fail 'origin readiness allows rendered-client cold starts'
+fi
+
 # Preserve Git modes during archive extraction; compare content/symlinks/modes/deletions, never timestamps/owners.
 if python3 - <<'PY'
 import pathlib

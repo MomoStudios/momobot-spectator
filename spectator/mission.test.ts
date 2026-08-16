@@ -113,9 +113,23 @@ describe('advancePublicMission', () => {
         expect(final.tasks.every(task => task.status === 'done')).toBe(true);
     });
 
-    test('rejects missing or ambiguous active tasks', () => {
+    test('rejects missing, ambiguous, or out-of-order active tasks', () => {
         expect(() => advancePublicMission({ ...validMission, tasks: validMission.tasks.map(task => ({ ...task, status: 'pending' })) })).toThrow('exactly one active task');
         expect(() => advancePublicMission({ ...validMission, tasks: validMission.tasks.map((task, index) => ({ ...task, status: index < 2 ? 'active' : 'pending' })) })).toThrow('exactly one active task');
+        expect(() => advancePublicMission({
+            ...validMission,
+            tasks: [
+                { label: 'Skipped prerequisite', status: 'pending' },
+                { label: 'Current task', status: 'active' }
+            ]
+        })).toThrow('ordered as done, active, pending');
+        expect(() => advancePublicMission({
+            ...validMission,
+            tasks: [
+                { label: 'Current task', status: 'active' },
+                { label: 'Prematurely completed later task', status: 'done' }
+            ]
+        })).toThrow('ordered as done, active, pending');
     });
 });
 

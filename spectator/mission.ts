@@ -55,6 +55,12 @@ export function advancePublicMission(value: unknown, updatedAt: string = new Dat
     const activeIndexes = mission.tasks.flatMap((task, index) => task.status === 'active' ? [index] : []);
     if (activeIndexes.length !== 1) throw new Error('Public mission must have exactly one active task');
     const activeIndex = activeIndexes[0];
+    if (
+        mission.tasks.slice(0, activeIndex).some(task => task.status !== 'done') ||
+        mission.tasks.slice(activeIndex + 1).some(task => task.status !== 'pending')
+    ) {
+        throw new Error('Public mission tasks must be ordered as done, active, pending');
+    }
     const nextPendingIndex = mission.tasks.findIndex((task, index) => index > activeIndex && task.status === 'pending');
     const advanced = sanitizePublicMission({
         ...mission,

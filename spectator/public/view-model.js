@@ -65,6 +65,57 @@ export function buildFocusModel(snapshot) {
     };
 }
 
+export function buildVicinityModel(snapshot, requestedRadius = 8) {
+    const radius = Math.max(4, Math.min(16, Number(requestedRadius) || 8));
+    const player = snapshot?.player;
+    if (!player || !snapshot?.nearby) return { radius, total: 0, summary: `No nearby entities within ${radius} tiles`, markers: [] };
+
+    const marker = (kind, entry, detail = '', active = false) => {
+        const dx = Number(entry.x) - Number(player.worldX);
+        const dz = Number(entry.z) - Number(player.worldZ);
+        const distance = Number.isFinite(Number(entry.distance)) ? Number(entry.distance) : Math.hypot(dx, dz);
+        return {
+            kind,
+            label: String(entry.name || 'Unknown'),
+            detail,
+            distance: Math.round(distance * 10) / 10,
+            x: Math.round((50 + Math.max(-1, Math.min(1, dx / radius)) * 42) * 100) / 100,
+            y: Math.round((50 - Math.max(-1, Math.min(1, dz / radius)) * 42) * 100) / 100,
+            active,
+            primary: false
+        };
+    };
+
+    const candidates = [];
+    for (const npc of snapshot.nearby.npcs ?? []) {
+        candidates.push(marker('npc', npc, npc.combatLevel ? `Lvl ${npc.combatLevel}` : '', Boolean(npc.inCombat)));
+    }
+    for (const nearbyPlayer of snapshot.nearby.players ?? []) {
+        candidates.push(marker('player', nearbyPlayer, nearbyPlayer.combatLevel ? `Lvl ${nearbyPlayer.combatLevel}` : ''));
+    }
+    for (const loc of snapshot.nearby.locs ?? []) {
+        if (Number(loc.level) === Number(player.level)) candidates.push(marker('loc', loc));
+    }
+    for (const item of snapshot.nearby.groundItems ?? []) {
+        candidates.push(marker('item', item, Number(item.count) > 1 ? `×${item.count}` : ''));
+    }
+
+    const kindPriority = { npc: 0, player: 1, item: 2, loc: 3 };
+    const inRange = candidates
+        .filter(candidate => candidate.distance <= radius)
+        .sort((a, b) => Number(b.active) - Number(a.active) || kindPriority[a.kind] - kindPriority[b.kind] || a.distance - b.distance);
+    const markers = inRange.slice(0, 12);
+    if (markers[0]) markers[0].primary = true;
+    const primary = markers[0];
+    const distanceCopy = primary ? `${primary.distance} ${primary.distance === 1 ? 'tile' : 'tiles'} away` : '';
+    return {
+        radius,
+        total: inRange.length,
+        summary: primary ? `${inRange.length} nearby · ${primary.label} ${distanceCopy}` : `No nearby entities within ${radius} tiles`,
+        markers
+    };
+}
+
 export function buildMapModel(snapshot) {
     if (!snapshot?.player || !snapshot?.nearby) return [];
     const { worldX, worldZ, level } = snapshot.player;

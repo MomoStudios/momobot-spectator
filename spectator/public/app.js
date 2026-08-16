@@ -1,6 +1,7 @@
 import { buildFocusModel, formatAge, formatClock, formatDuration, formatNumber } from './view-model.js?v=6';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedTabForKey, normalizeFeedTab } from './feed-view.js?v=1';
+import { skillIconIndex } from './skill-icons.js?v=1';
 
 const $ = id => document.getElementById(id);
 let latestPayload = null;
@@ -112,10 +113,17 @@ function renderSkills(skills) {
     const sorted = [...skills].sort((a, b) => b.baseLevel - a.baseLevel || a.name.localeCompare(b.name));
     for (const skill of sorted) {
         const row = element('div', 'skill-row');
-        const name = element('span', 'skill-name', skill.name);
+        const identity = element('span', 'skill-identity');
+        const iconIndex = skillIconIndex(skill.name);
+        if (iconIndex !== null) {
+            const icon = element('span', `skill-icon skill-icon-${iconIndex}`);
+            icon.setAttribute('aria-hidden', 'true');
+            identity.append(icon);
+        }
+        identity.append(element('span', 'skill-name', skill.name));
         const xp = element('span', 'skill-xp mono', `${formatNumber(skill.experience)} XP`);
         const level = element('strong', 'skill-level', skill.baseLevel);
-        row.append(name, xp, level);
+        row.append(identity, xp, level);
         container.append(row);
     }
 }

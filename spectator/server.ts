@@ -99,6 +99,7 @@ export async function loadAssets(): Promise<Record<string, Asset>> {
         ['/view-model.js', 'view-model.js', 'text/javascript; charset=utf-8'],
         ['/scene-view.js', 'scene-view.js', 'text/javascript; charset=utf-8'],
         ['/feed-view.js', 'feed-view.js', 'text/javascript; charset=utf-8'],
+        ['/skill-icons.js', 'skill-icons.js', 'text/javascript; charset=utf-8'],
         ['/favicon.svg', 'favicon.svg', 'image/svg+xml'],
         ['/native-map', 'native-map/index.html', 'text/html; charset=utf-8', true],
         ['/native-map/', 'native-map/index.html', 'text/html; charset=utf-8', true],
@@ -111,6 +112,10 @@ export async function loadAssets(): Promise<Record<string, Asset>> {
         return [route, { body, type, embeddable }] as const;
     }));
     const assets: Record<string, Asset> = Object.fromEntries(entries);
+    assets['/skill-icons.png'] = {
+        body: Bun.file(`${import.meta.dir}/public/skill-icons.png`),
+        type: 'image/png'
+    };
     assets['/worldmap.jag'] = {
         body: Bun.file(`${import.meta.dir}/public/worldmap.jag`),
         type: 'application/octet-stream'

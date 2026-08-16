@@ -15,9 +15,15 @@ Portions of this repository are derived from upstream open-source work:
   Lost City (2004scape) — https://lostcity.rs
   Licensed MIT. Copyright (c) 2025 Lost City.
 
-Specifically, `spectator/public/native-map/mapview.js` is a build artifact
-derived from `server/webclient/src/mapview/MapView.ts` in rs-sdk, which is
-published there under the MIT license.
+Specifically:
+
+- `spectator/public/native-map/mapview.js` is a build artifact derived from
+  `server/webclient/src/mapview/MapView.ts` in rs-sdk.
+- `spectator/public/skill-icons.png` is a transparency-keyed sprite strip
+  derived from Lost City's `staticons.png` and `staticons2.png` client-cache
+  assets, using the skill mapping in `player/interfaces/stats.if`.
+
+These upstream materials are published under the MIT license.
 
 The upstream MIT license text follows.
 

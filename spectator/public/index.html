@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#08090a">
     <title>Momobot Live Observer</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/styles.css?v=13">
+    <link rel="stylesheet" href="/styles.css?v=14">
 </head>
 <body>
     <header class="topbar">
@@ -28,67 +28,49 @@
 
     <main class="shell">
         <section class="story-grid" aria-label="Current Momobot activity">
-            <article class="now-card">
-                <div class="now-layout">
-                    <div class="now-copy">
-                        <div>
-                            <div class="eyebrow">LIVE NOW</div>
-                            <h1 id="current-focus">Connecting to Momobot…</h1>
-                            <p class="focus-context"><span class="activity-orb"></span><span id="current-context">Waiting for observable game state</span></p>
-                        </div>
-                        <div class="now-meta">
-                            <div class="place-block">
-                                <span class="meta-label">LOCATION</span>
-                                <strong id="location">Gielinor</strong>
-                                <span class="mono" id="location-detail">—, —</span>
-                            </div>
-                            <div class="now-vitals" aria-label="Current vitals">
-                                <div class="now-vital-row"><span>HP</span><strong class="mono" id="now-hp-label">— / —</strong></div>
-                                <progress id="now-hp-bar" class="bar hp" max="1" value="0"></progress>
-                                <div class="now-vital-row energy"><span>RUN</span><strong class="mono" id="now-energy-label">—%</strong></div>
-                                <progress id="now-energy-bar" class="bar energy" max="100" value="0"></progress>
+            <article class="live-objective-card" id="live-objective">
+                <div class="objective-head">
+                    <div class="eyebrow">LIVE OBJECTIVE</div>
+                    <div class="mission-update-row"><span>PLAN STATUS</span><strong class="mono" id="mission-updated">Not published</strong></div>
+                </div>
+
+                <div class="objective-grid" id="short-term-mission">
+                    <div class="objective-copy">
+                        <h1 id="mission-title">Awaiting next objective</h1>
+                        <p id="mission-objective">Momobot’s next public objective will appear here.</p>
+                        <div class="live-action">
+                            <span class="activity-orb" aria-hidden="true"></span>
+                            <div>
+                                <span class="meta-label">NOW</span>
+                                <strong id="current-focus">Connecting to Momobot…</strong>
+                                <span id="current-context">Waiting for observable game state</span>
                             </div>
                         </div>
                     </div>
-                    <section class="vicinity-panel" aria-labelledby="vicinity-title">
-                        <div class="vicinity-head">
-                            <span class="meta-label" id="vicinity-title">VICINITY</span>
-                            <span class="mono" id="vicinity-scale">8 TILE RADIUS</span>
-                        </div>
-                        <div class="vicinity-field" id="vicinity-field" role="img" aria-label="Waiting for nearby world state">
-                            <span class="vicinity-axis north" aria-hidden="true">N</span>
-                            <span class="vicinity-ring outer" aria-hidden="true"></span>
-                            <span class="vicinity-ring inner" aria-hidden="true"></span>
-                            <span class="vicinity-crosshair horizontal" aria-hidden="true"></span>
-                            <span class="vicinity-crosshair vertical" aria-hidden="true"></span>
-                            <div id="vicinity-markers" aria-hidden="true"></div>
-                            <span class="vicinity-self" aria-hidden="true"><i></i><b>Momobot</b></span>
-                        </div>
-                        <div class="vicinity-footer">
-                            <span id="vicinity-summary">Waiting for nearby world state</span>
-                            <span class="vicinity-legend" aria-hidden="true"><i class="npc"></i>NPC <i class="player"></i>PLAYER <i class="item"></i>ITEM <i class="loc"></i>OBJECT</span>
-                        </div>
-                    </section>
-                </div>
-            </article>
 
-            <aside class="mission-card" id="short-term-mission">
-                <div class="mission-copy">
-                    <div class="eyebrow">SHORT-TERM MISSION</div>
-                    <h2 id="mission-title">Awaiting next objective</h2>
-                    <p id="mission-objective">Momobot’s next public objective will appear here.</p>
+                    <ol class="mission-task-list" id="mission-tasks" aria-label="Short-term mission tasks">
+                        <li class="mission-task pending"><span class="mission-task-marker" aria-hidden="true"></span><span>No public task list yet</span></li>
+                    </ol>
                 </div>
-                <ol class="mission-task-list" id="mission-tasks" aria-label="Short-term mission tasks">
-                    <li class="mission-task pending"><span class="mission-task-marker" aria-hidden="true"></span><span>No public task list yet</span></li>
-                </ol>
-                <div class="mission-footer">
-                    <div class="mission-update-row"><span>PLAN STATUS</span><strong class="mono" id="mission-updated">Not published</strong></div>
+
+                <div class="objective-footer">
+                    <div class="place-block">
+                        <span class="meta-label">LOCATION</span>
+                        <strong id="location">Gielinor</strong>
+                        <span class="mono" id="location-detail">—, —</span>
+                    </div>
+                    <div class="now-vitals" aria-label="Current vitals">
+                        <div class="now-vital-row"><span>HP</span><strong class="mono" id="now-hp-label">— / —</strong></div>
+                        <progress id="now-hp-bar" class="bar hp" max="1" value="0"></progress>
+                        <div class="now-vital-row energy"><span>RUN</span><strong class="mono" id="now-energy-label">—%</strong></div>
+                        <progress id="now-energy-bar" class="bar energy" max="100" value="0"></progress>
+                    </div>
                     <div class="long-term-progress" id="long-term-progress">
                         <div class="mission-progress-row"><span>North star · Every quest, every skill at 99</span><strong id="mission-progress">0 / 19</strong></div>
                         <progress id="mission-bar" class="bar mission" max="19" value="0"></progress>
                     </div>
                 </div>
-            </aside>
+            </article>
         </section>
 
         <section class="dashboard-grid primary-grid">
@@ -214,6 +196,6 @@
             <span class="mono" id="tick-label">tick —</span>
         </footer>
     </main>
-    <script type="module" src="/app.js?v=10"></script>
+    <script type="module" src="/app.js?v=11"></script>
 </body>
 </html>

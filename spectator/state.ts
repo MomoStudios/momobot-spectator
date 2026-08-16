@@ -248,10 +248,12 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
     const previousSkills = skillMap(previous.skills);
     const previousSkillsInitialized = (previous.skills ?? []).filter(isPublicSkill)
         .some(skill => skill.experience > 0 || skill.baseLevel > 1);
+    const nextSkillsInitialized = (next.skills ?? []).filter(isPublicSkill)
+        .some(skill => skill.experience > 0 || skill.baseLevel > 1);
+    if (!previousSkillsInitialized || !nextSkillsInitialized) return [];
     let sequence = 0;
 
     for (const skill of (next.skills ?? []).filter(isPublicSkill)) {
-        if (!previousSkillsInitialized) continue;
         const before = previousSkills.get(skill.name);
         if (!before) continue;
         const xpGained = Math.max(0, skill.experience - before.experience);
@@ -264,17 +266,15 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
         }
     }
 
-    if (previousSkillsInitialized) {
-        const beforeItems = itemCounts(previous.inventory);
-        const afterItems = itemCounts(next.inventory);
-        for (const [name, count] of afterItems) {
-            const delta = count - (beforeItems.get(name) ?? 0);
-            if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Picked up ${delta} × ${name}`));
-        }
-        for (const [name, count] of beforeItems) {
-            const delta = count - (afterItems.get(name) ?? 0);
-            if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Used or lost ${delta} × ${name}`));
-        }
+    const beforeItems = itemCounts(previous.inventory);
+    const afterItems = itemCounts(next.inventory);
+    for (const [name, count] of afterItems) {
+        const delta = count - (beforeItems.get(name) ?? 0);
+        if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Picked up ${delta} × ${name}`));
+    }
+    for (const [name, count] of beforeItems) {
+        const delta = count - (afterItems.get(name) ?? 0);
+        if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Used or lost ${delta} × ${name}`));
     }
 
     if (!previousPlayer.combat?.inCombat && nextPlayer.combat?.inCombat) {

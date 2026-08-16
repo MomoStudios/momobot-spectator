@@ -12,10 +12,17 @@ describe('parseEnvFile', () => {
 });
 
 describe('spectator static assets', () => {
-    test('includes the overview scene and game-feed modules', async () => {
+    test('includes required dashboard modules and authentic skill icons', async () => {
         const assets = await loadAssets();
         expect(String(assets['/scene-view.js']?.body)).toContain('streamSocketUrl');
         expect(String(assets['/feed-view.js']?.body)).toContain('normalizeFeedTab');
+        expect(String(assets['/skill-icons.js']?.body)).toContain('skillIconIndex');
+        const skillIcons = new Uint8Array(await new Response(assets['/skill-icons.png']?.body).arrayBuffer());
+        expect(skillIcons.slice(0, 8)).toEqual(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+        const iconView = new DataView(skillIcons.buffer, skillIcons.byteOffset, skillIcons.byteLength);
+        expect(iconView.getUint32(16)).toBe(25);
+        expect(iconView.getUint32(20)).toBe(475);
+        expect(skillIcons[25]).toBe(6);
         const html = String(assets['/']?.body);
         const app = String(assets['/app.js']?.body);
         expect(app).not.toContain('buildVicinityModel');

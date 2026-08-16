@@ -184,8 +184,29 @@ h2 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.01em; font-weight: 520;
 .detail-summary-meta { color: var(--dim); font-size: 10px; }
 .detail-panel[open] .detail-summary-meta span:last-child { display: inline-block; transform: rotate(45deg); }
 .skills-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 14px 16px; border-top: 1px solid var(--border-soft); }
-.skill-row { min-height: 49px; display: grid; grid-template-columns: minmax(0, 1fr) auto 30px; align-items: center; gap: 8px; padding: 0 9px; border-bottom: 1px solid var(--border-soft); }
-.skill-name { color: var(--text-2); font-size: 11px; }
+.skill-row { min-height: 54px; display: grid; grid-template-columns: minmax(0, 1fr) auto 30px; align-items: center; gap: 8px; padding: 0 9px; border-bottom: 1px solid var(--border-soft); }
+.skill-identity { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.skill-icon { width: 25px; height: 25px; flex: 0 0 25px; background-image: url('/skill-icons.png?v=1'); background-repeat: no-repeat; image-rendering: pixelated; }
+.skill-icon-0 { background-position: 0 0; }
+.skill-icon-1 { background-position: 0 -25px; }
+.skill-icon-2 { background-position: 0 -50px; }
+.skill-icon-3 { background-position: 0 -75px; }
+.skill-icon-4 { background-position: 0 -100px; }
+.skill-icon-5 { background-position: 0 -125px; }
+.skill-icon-6 { background-position: 0 -150px; }
+.skill-icon-7 { background-position: 0 -175px; }
+.skill-icon-8 { background-position: 0 -200px; }
+.skill-icon-9 { background-position: 0 -225px; }
+.skill-icon-10 { background-position: 0 -250px; }
+.skill-icon-11 { background-position: 0 -275px; }
+.skill-icon-12 { background-position: 0 -300px; }
+.skill-icon-13 { background-position: 0 -325px; }
+.skill-icon-14 { background-position: 0 -350px; }
+.skill-icon-15 { background-position: 0 -375px; }
+.skill-icon-16 { background-position: 0 -400px; }
+.skill-icon-17 { background-position: 0 -425px; }
+.skill-icon-18 { background-position: 0 -450px; }
+.skill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-size: 11px; }
 .skill-xp { color: var(--dim); font-size: 9px; }
 .skill-level { color: var(--text); font-size: 15px; font-weight: 520; text-align: right; }
 .nearby-columns { display: grid; grid-template-columns: 1fr 1fr; padding: 0 10px 14px; border-top: 1px solid var(--border-soft); }

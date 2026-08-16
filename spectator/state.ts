@@ -264,15 +264,17 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
         }
     }
 
-    const beforeItems = itemCounts(previous.inventory);
-    const afterItems = itemCounts(next.inventory);
-    for (const [name, count] of afterItems) {
-        const delta = count - (beforeItems.get(name) ?? 0);
-        if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Picked up ${delta} × ${name}`));
-    }
-    for (const [name, count] of beforeItems) {
-        const delta = count - (afterItems.get(name) ?? 0);
-        if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Used or lost ${delta} × ${name}`));
+    if (previousSkillsInitialized) {
+        const beforeItems = itemCounts(previous.inventory);
+        const afterItems = itemCounts(next.inventory);
+        for (const [name, count] of afterItems) {
+            const delta = count - (beforeItems.get(name) ?? 0);
+            if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Picked up ${delta} × ${name}`));
+        }
+        for (const [name, count] of beforeItems) {
+            const delta = count - (afterItems.get(name) ?? 0);
+            if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Used or lost ${delta} × ${name}`));
+        }
     }
 
     if (!previousPlayer.combat?.inCombat && nextPlayer.combat?.inCombat) {

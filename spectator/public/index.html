@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#08090a">
     <title>Momobot Live Observer</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/styles.css?v=11">
+    <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
     <header class="topbar">
@@ -46,16 +46,21 @@
                 </div>
             </article>
 
-            <aside class="mission-card">
-                <div>
-                    <div class="eyebrow">LONG-TERM MISSION</div>
-                    <h2>Every quest.<br>Every skill at 99.</h2>
-                    <p>Momobot’s public journey through the complete 2004scape world.</p>
+            <aside class="mission-card" id="short-term-mission">
+                <div class="mission-copy">
+                    <div class="eyebrow">SHORT-TERM MISSION</div>
+                    <h2 id="mission-title">Awaiting next objective</h2>
+                    <p id="mission-objective">Momobot’s next public objective will appear here.</p>
                 </div>
-                <div class="mission-progress-wrap">
-                    <div class="mission-progress-row"><span>Skills mastered</span><strong id="mission-progress">0 / 19</strong></div>
-                    <progress id="mission-bar" class="bar mission" max="19" value="0"></progress>
-                    <small>Quest progress will appear when the game exposes an authoritative public signal.</small>
+                <ol class="mission-task-list" id="mission-tasks" aria-label="Short-term mission tasks">
+                    <li class="mission-task pending"><span class="mission-task-marker" aria-hidden="true"></span><span>No public task list yet</span></li>
+                </ol>
+                <div class="mission-footer">
+                    <div class="mission-update-row"><span>PLAN STATUS</span><strong class="mono" id="mission-updated">Not published</strong></div>
+                    <div class="long-term-progress" id="long-term-progress">
+                        <div class="mission-progress-row"><span>North star · Every quest, every skill at 99</span><strong id="mission-progress">0 / 19</strong></div>
+                        <progress id="mission-bar" class="bar mission" max="19" value="0"></progress>
+                    </div>
                 </div>
             </aside>
         </section>
@@ -183,6 +188,6 @@
             <span class="mono" id="tick-label">tick —</span>
         </footer>
     </main>
-    <script type="module" src="/app.js?v=8"></script>
+    <script type="module" src="/app.js?v=9"></script>
 </body>
 </html>

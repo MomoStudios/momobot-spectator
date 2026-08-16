@@ -63,17 +63,45 @@ function renderVitals(state) {
     setText('tick-label', `tick ${state.tick} · rev ${state.revision}`);
 }
 
-function renderSession(session, state) {
-    const mastered = session?.skillsMastered ?? state.skills.filter(skill => skill.baseLevel >= 99).length;
-    const skillCount = session?.skillCount ?? state.skills.length;
+function renderMission(mission, session, state) {
+    const skills = state?.skills || [];
+    const mastered = session?.skillsMastered ?? skills.filter(skill => skill.baseLevel >= 99).length;
+    const skillCount = session?.skillCount ?? skills.length;
+    setText('mission-progress', `${mastered} / ${skillCount || 19}`);
+    $('mission-bar').max = Math.max(1, skillCount || 19);
+    $('mission-bar').value = mastered;
+
+    const tasks = $('mission-tasks');
+    clear(tasks);
+    if (!mission) {
+        setText('mission-title', 'Awaiting next objective');
+        setText('mission-objective', 'Momobot’s next public objective will appear here.');
+        setText('mission-updated', 'Not published');
+        const row = element('li', 'mission-task pending');
+        row.append(element('span', 'mission-task-marker'), element('span', '', 'No public task list yet'));
+        tasks.append(row);
+        return;
+    }
+
+    setText('mission-title', mission.title);
+    setText('mission-objective', mission.objective);
+    setText('mission-updated', formatAge(Date.parse(mission.updatedAt)));
+    const statusLabels = { done: 'Completed', active: 'In progress', pending: 'Pending' };
+    for (const task of mission.tasks) {
+        const status = ['done', 'active', 'pending'].includes(task.status) ? task.status : 'pending';
+        const row = element('li', `mission-task ${status}`);
+        row.setAttribute('aria-label', `${statusLabels[status]}: ${task.label}`);
+        row.append(element('span', 'mission-task-marker'), element('span', '', task.label));
+        tasks.append(row);
+    }
+}
+
+function renderSession(session) {
     setText('session-duration', formatDuration(session?.durationMs ?? 0));
     setText('session-xp', formatNumber(session?.xpGained ?? 0));
     setText('session-rate', formatNumber(session?.xpPerHour ?? 0));
     setText('session-levels', formatNumber(session?.levelsGained ?? 0));
     setText('session-leading', session?.leadingSkill ? `${session.leadingSkill.name} · +${formatNumber(session.leadingSkill.xpGained)} XP` : 'No gains yet');
-    setText('mission-progress', `${mastered} / ${skillCount}`);
-    $('mission-bar').max = Math.max(1, skillCount);
-    $('mission-bar').value = mastered;
 }
 
 function renderSkills(skills) {
@@ -357,9 +385,10 @@ function updateMapMode() {
 function render(payload) {
     latestPayload = payload;
     renderConnection(payload);
+    renderMission(payload.mission, payload.session, payload.state);
     if (!payload.state) return;
     renderVitals(payload.state);
-    renderSession(payload.session, payload.state);
+    renderSession(payload.session);
     renderSkills(payload.state.skills);
     renderItems(payload.state);
     renderTimeline(payload.events || []);
@@ -417,6 +446,7 @@ for (const name of ['messages', 'chat']) {
 setInterval(() => {
     if (latestPayload) {
         renderConnection(latestPayload);
+        renderMission(latestPayload.mission, latestPayload.session, latestPayload.state);
         renderTimeline(latestPayload.events || []);
     }
 }, 1000);

@@ -68,6 +68,16 @@ describe('deriveEvents', () => {
         expect(deriveEvents(previous, next, 123456)).toEqual([]);
     });
 
+    test('does not treat the initial inventory synchronization as recent pickups', () => {
+        const previous = baseState();
+        previous.skills = previous.skills.map(skill => ({ ...skill, level: 1, baseLevel: 1, experience: 0 }));
+        previous.inventory = [];
+        const next = baseState();
+        next.tick = 2;
+
+        expect(deriveEvents(previous, next, 123456).filter(event => event.kind === 'inventory')).toEqual([]);
+    });
+
     test('groups a level and its XP gain into one highlight', () => {
         const previous = baseState();
         const next = baseState();

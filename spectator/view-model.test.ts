@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildFocusModel, buildMapModel, buildVicinityModel, describeLocation, formatAge, formatClock, formatDuration, formatNumber, totalLevel } from './public/view-model.js';
+import { buildFocusModel, buildMapModel, describeLocation, formatAge, formatClock, formatDuration, formatNumber, totalLevel } from './public/view-model.js';
 
 const snapshot = {
     player: { worldX: 100, worldZ: 200, level: 1 },
@@ -20,29 +20,6 @@ describe('dashboard view model', () => {
             { kind: 'player', label: 'Scout (3)', dx: -2, dz: 1 },
             { kind: 'self', label: 'Momobot', dx: 0, dz: 0 }
         ]);
-    });
-
-    test('projects a bounded, prioritized vicinity around Momobot', () => {
-        const vicinity = buildVicinityModel({
-            ...snapshot,
-            nearby: {
-                ...snapshot.nearby,
-                npcs: [
-                    { name: 'Goblin', x: 102, z: 199, distance: 2, combatLevel: 2, healthPercent: 50, inCombat: true },
-                    { name: 'Guard', x: 120, z: 200, distance: 20, combatLevel: 21, inCombat: false }
-                ]
-            }
-        }, 8);
-
-        expect(vicinity.radius).toBe(8);
-        expect(vicinity.total).toBe(4);
-        expect(vicinity.summary).toBe('4 nearby · Goblin 2 tiles away');
-        expect(vicinity.markers[0]).toEqual({
-            kind: 'npc', label: 'Goblin', detail: 'Lvl 2', distance: 2,
-            x: 60.5, y: 55.25, active: true, primary: true
-        });
-        expect(vicinity.markers.map(marker => marker.kind)).toEqual(['npc', 'player', 'item', 'loc']);
-        expect(vicinity.markers.some(marker => marker.label === 'Guard')).toBe(false);
     });
 
     test('describes spectator context without exposing controller intent', () => {

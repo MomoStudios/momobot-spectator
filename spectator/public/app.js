@@ -1,4 +1,4 @@
-import { buildFocusModel, buildVicinityModel, formatAge, formatClock, formatDuration, formatNumber } from './view-model.js?v=5';
+import { buildFocusModel, formatAge, formatClock, formatDuration, formatNumber } from './view-model.js?v=6';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedTabForKey, normalizeFeedTab } from './feed-view.js?v=1';
 
@@ -63,33 +63,6 @@ function renderVitals(state) {
     $('energy-bar').value = player.runEnergy;
     setText('slot-count', `${state.inventory.length} / 28 slots`);
     setText('tick-label', `tick ${state.tick} · rev ${state.revision}`);
-}
-
-function renderVicinity(state) {
-    const vicinity = buildVicinityModel(state, 8);
-    const field = $('vicinity-field');
-    const container = $('vicinity-markers');
-    setText('vicinity-scale', `${vicinity.radius} TILE RADIUS`);
-    setText('vicinity-summary', vicinity.summary);
-    field.setAttribute('aria-label', `Local vicinity: ${vicinity.summary}`);
-    clear(container);
-
-    for (const marker of vicinity.markers) {
-        const classes = ['vicinity-marker', marker.kind];
-        if (marker.active) classes.push('active');
-        if (marker.primary) classes.push('primary');
-        if (marker.x > 67) classes.push('reverse');
-        const node = element('span', classes.join(' '));
-        node.style.left = `${marker.x}%`;
-        node.style.top = `${marker.y}%`;
-        node.append(element('i', 'vicinity-marker-dot'));
-        if (marker.primary) {
-            const label = element('span', 'vicinity-marker-label', marker.label);
-            if (marker.detail) label.append(element('small', '', marker.detail));
-            node.append(label);
-        }
-        container.append(node);
-    }
 }
 
 function renderMission(mission, session, state) {
@@ -417,7 +390,6 @@ function render(payload) {
     renderMission(payload.mission, payload.session, payload.state);
     if (!payload.state) return;
     renderVitals(payload.state);
-    renderVicinity(payload.state);
     renderSession(payload.session);
     renderSkills(payload.state.skills);
     renderItems(payload.state);

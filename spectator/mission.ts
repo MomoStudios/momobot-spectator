@@ -49,6 +49,25 @@ export function sanitizePublicMission(value: unknown): PublicMission | null {
     return { title, objective, updatedAt, tasks };
 }
 
+export function advancePublicMission(value: unknown, updatedAt: string = new Date().toISOString()): PublicMission {
+    const mission = sanitizePublicMission(value);
+    if (!mission) throw new Error('Invalid public mission');
+    const activeIndexes = mission.tasks.flatMap((task, index) => task.status === 'active' ? [index] : []);
+    if (activeIndexes.length !== 1) throw new Error('Public mission must have exactly one active task');
+    const activeIndex = activeIndexes[0];
+    const nextPendingIndex = mission.tasks.findIndex((task, index) => index > activeIndex && task.status === 'pending');
+    const advanced = sanitizePublicMission({
+        ...mission,
+        updatedAt,
+        tasks: mission.tasks.map((task, index) => ({
+            ...task,
+            status: index === activeIndex ? 'done' : index === nextPendingIndex ? 'active' : task.status
+        }))
+    });
+    if (!advanced) throw new Error('Invalid public mission');
+    return advanced;
+}
+
 export async function loadPublicMission(path: string): Promise<PublicMission | null> {
     try {
         return sanitizePublicMission(JSON.parse(await readFile(path, 'utf8')));

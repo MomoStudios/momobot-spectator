@@ -138,6 +138,18 @@ bun spectator/set-public-mission.ts \
 ```
 
 Repeat `--task` up to six times. Valid statuses are `done`, `active`, and `pending`.
+After the controller has **observed evidence** that the active task is complete, advance
+it atomically and activate the next pending task with:
+
+```sh
+bun spectator/set-public-mission.ts --bot=momobot --advance
+```
+
+A milestone update is part of the controller's completion boundary: publish the new
+mission before the first action of a new objective, advance immediately after each
+verified milestone, and replace the mission when the plan changes or hands off to the
+next quest. Never advance merely because an action packet was sent or intended.
+
 The writer replaces `bots/<botname>/public-mission.json` atomically with mode `0644`;
 the spectator reloads it within one second without a service restart. Publish only
 viewer-safe outcomes and steps—never controller reasoning, credentials, or private

@@ -19,22 +19,31 @@ export interface RoutedResponse {
     cacheControl: string;
 }
 
-export class RenderedClientWatchdog {
-    private failures = 0;
+export function privateChatClicksToOff(mode: number): number {
+    if (!Number.isInteger(mode) || mode < 0 || mode > 2) {
+        throw new Error('private chat mode must be 0 (On), 1 (Friends), or 2 (Off)');
+    }
+    return (2 - mode + 3) % 3;
+}
 
-    constructor(private readonly failureThreshold: number) {
+export class RenderedClientWatchdog {
+    #failures = 0;
+    #failureThreshold = 1;
+
+    constructor(failureThreshold: number) {
         if (!Number.isInteger(failureThreshold) || failureThreshold < 1) {
             throw new Error('failureThreshold must be a positive integer');
         }
+        this.#failureThreshold = failureThreshold;
     }
 
     record(inGame: boolean): boolean {
         if (inGame) {
-            this.failures = 0;
+            this.#failures = 0;
             return false;
         }
-        this.failures++;
-        return this.failures >= this.failureThreshold;
+        this.#failures++;
+        return this.#failures >= this.#failureThreshold;
     }
 }
 

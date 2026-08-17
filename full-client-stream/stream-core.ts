@@ -19,6 +19,25 @@ export interface RoutedResponse {
     cacheControl: string;
 }
 
+export class RenderedClientWatchdog {
+    private failures = 0;
+
+    constructor(private readonly failureThreshold: number) {
+        if (!Number.isInteger(failureThreshold) || failureThreshold < 1) {
+            throw new Error('failureThreshold must be a positive integer');
+        }
+    }
+
+    record(inGame: boolean): boolean {
+        if (inGame) {
+            this.failures = 0;
+            return false;
+        }
+        this.failures++;
+        return this.failures >= this.failureThreshold;
+    }
+}
+
 export function captureIntervalMs(viewers: number): number {
     return viewers > 0 ? 125 : 1000;
 }

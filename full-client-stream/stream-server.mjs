@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import puppeteer from 'puppeteer';
 import { WebSocket, WebSocketServer } from 'ws';
-import { captureIntervalMs, redactSecret, routeRequest } from './stream-core.ts';
+import { RenderedClientWatchdog, captureIntervalMs, redactSecret, routeRequest } from './stream-core.ts';
 
 const ROOT = new URL('.', import.meta.url);
 const PORT = Number(process.env.STREAM_PORT || 3211);
@@ -45,6 +45,9 @@ let latestFrameAt = 0;
 let measuredFps = 0;
 let running = true;
 let frameTimes = [];
+const CLIENT_HEALTH_POLL_MS = 2_000;
+const clientWatchdog = new RenderedClientWatchdog(5);
+let nextClientHealthProbeAt = 0;
 
 const status = () => ({
     browserConnected,
@@ -145,6 +148,19 @@ async function launchClient() {
 async function captureLoop() {
     while (running) {
         const started = Date.now();
+        if (started >= nextClientHealthProbeAt) {
+            let inGame = false;
+            try {
+                inGame = await page.evaluate(() => Boolean(window.gameClient?.ingame));
+            } catch (error) {
+                console.error('[stream] rendered-client probe failed:', redact(error));
+            }
+            gameReady = inGame;
+            nextClientHealthProbeAt = started + CLIENT_HEALTH_POLL_MS;
+            if (clientWatchdog.record(inGame)) {
+                throw new Error('Rendered client left the game; restarting browser service');
+            }
+        }
         if (gameReady && canvas) {
             try {
                 const dataUrl = await page.evaluate(quality => {

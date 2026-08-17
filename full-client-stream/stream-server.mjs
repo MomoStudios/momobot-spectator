@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import puppeteer from 'puppeteer';
 import { WebSocket, WebSocketServer } from 'ws';
-import { RenderedClientWatchdog, captureIntervalMs, redactSecret, routeRequest } from './stream-core.ts';
+import { RenderedClientWatchdog, captureIntervalMs, privateChatClicksToOff, redactSecret, routeRequest } from './stream-core.ts';
 
 const ROOT = new URL('.', import.meta.url);
 const PORT = Number(process.env.STREAM_PORT || 3211);
@@ -114,14 +114,16 @@ async function waitForRenderedWorld() {
 async function applySpectatorPrivacy() {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Game canvas has no visible bounds');
-    // Fresh clients start with private chat On. Two clicks select Off and
-    // prevent ordinary private messages from being rendered into public pixels.
     const privateChatX = box.x + (184 / 765) * box.width;
     const privateChatY = box.y + (480 / 503) * box.height;
-    await page.mouse.click(privateChatX, privateChatY);
-    await new Promise(resolve => setTimeout(resolve, 200));
-    await page.mouse.click(privateChatX, privateChatY);
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const mode = await page.evaluate(() => window.gameClient?.chatPrivateMode);
+    const clicks = privateChatClicksToOff(mode);
+    for (let index = 0; index < clicks; index++) {
+        await page.mouse.click(privateChatX, privateChatY);
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    const finalMode = await page.evaluate(() => window.gameClient?.chatPrivateMode);
+    if (finalMode !== 2) throw new Error('Failed to set private chat Off');
 }
 
 async function launchClient() {

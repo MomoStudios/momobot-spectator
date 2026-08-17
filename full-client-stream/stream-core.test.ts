@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { RenderedClientWatchdog, captureIntervalMs, redactSecret, routeRequest } from './stream-core';
+import { RenderedClientWatchdog, captureIntervalMs, privateChatClicksToOff, redactSecret, routeRequest } from './stream-core';
 
 const status = { browserConnected: true, gameReady: true, frameAgeMs: 40, fps: 7.8, viewers: 1 };
 const assets = {
@@ -49,7 +49,29 @@ describe('log redaction', () => {
     });
 });
 
+describe('spectator privacy', () => {
+    test('cycles any persisted private-chat mode deterministically to Off', () => {
+        expect(privateChatClicksToOff(0)).toBe(2);
+        expect(privateChatClicksToOff(1)).toBe(1);
+        expect(privateChatClicksToOff(2)).toBe(0);
+        expect(() => privateChatClicksToOff(-1)).toThrow();
+    });
+});
+
 describe('rendered client recovery', () => {
+    test('loads under the production Node TypeScript stripper', async () => {
+        const moduleUrl = new URL('./stream-core.ts', import.meta.url).href;
+        const child = Bun.spawn([
+            'node',
+            '--input-type=module',
+            '--eval',
+            `await import(${JSON.stringify(moduleUrl)})`
+        ], { stdout: 'pipe', stderr: 'pipe' });
+        const exitCode = await child.exited;
+        const stderr = await new Response(child.stderr).text();
+        expect(exitCode, stderr).toBe(0);
+    });
+
     test('requests a restart after consecutive login-screen probes', () => {
         const watchdog = new RenderedClientWatchdog(3);
         expect(watchdog.record(false)).toBe(false);

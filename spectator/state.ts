@@ -62,6 +62,8 @@ export interface PublicSnapshot {
     prayers: { prayerLevel: number; prayerPoints: number; activePrayers: number[] };
 }
 
+export type PublicMessage = PublicSnapshot['chatMessages'][number];
+
 const GAME_TICK_MS = 300;
 const GAME_MESSAGE_TYPES = new Set([0]);
 const PUBLIC_CHAT_TYPES = new Set([1, 2]);
@@ -79,6 +81,18 @@ function cleanMessage(message: GameMessage, currentTick: number, observedAt: num
         tick: message.tick,
         at: observedAt - Math.max(0, currentTick - message.tick) * GAME_TICK_MS,
         fromSelf: message.fromSelf
+    };
+}
+
+export function sanitizeMessageHistory(messages: GameMessage[], currentTick: number, observedAt: number = Date.now(), limit: number = 500) {
+    const history = (messages ?? [])
+        .filter(message => GAME_MESSAGE_TYPES.has(message.type) || PUBLIC_CHAT_TYPES.has(message.type))
+        .slice(-Math.max(0, limit))
+        .map(message => cleanMessage(message, currentTick, observedAt));
+    return {
+        history,
+        gameMessages: history.filter(message => GAME_MESSAGE_TYPES.has(message.type)),
+        chatMessages: history.filter(message => PUBLIC_CHAT_TYPES.has(message.type))
     };
 }
 
@@ -101,6 +115,7 @@ export function summarizeActivity(state: BotWorldState | null): string {
 export function sanitizeState(state: BotWorldState, observedAt: number = Date.now()): PublicSnapshot {
     const player = state.player;
     if (!player) throw new Error('Cannot publish spectator state without a player');
+    const messageHistory = sanitizeMessageHistory(state.gameMessages ?? [], state.tick, observedAt, 30);
     return {
         connected: true,
         observedAt,
@@ -168,8 +183,8 @@ export function sanitizeState(state: BotWorldState, observedAt: number = Date.no
                 reachable: item.reachable
             }))
         },
-        gameMessages: (state.gameMessages ?? []).filter(message => GAME_MESSAGE_TYPES.has(message.type)).slice(-30).map(message => cleanMessage(message, state.tick, observedAt)),
-        chatMessages: (state.gameMessages ?? []).filter(message => PUBLIC_CHAT_TYPES.has(message.type)).slice(-30).map(message => cleanMessage(message, state.tick, observedAt)),
+        gameMessages: messageHistory.gameMessages,
+        chatMessages: messageHistory.chatMessages,
         dialogs: (state.recentDialogs ?? []).slice(-12).map(dialog => ({ text: dialog.text, tick: dialog.tick })),
         dialog: {
             isOpen: state.dialog?.isOpen ?? false,

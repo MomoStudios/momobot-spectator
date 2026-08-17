@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { captureIntervalMs, redactSecret, routeRequest } from './stream-core';
+import { RenderedClientWatchdog, captureIntervalMs, redactSecret, routeRequest } from './stream-core';
 
 const status = { browserConnected: true, gameReady: true, frameAgeMs: 40, fps: 7.8, viewers: 1 };
 const assets = {
@@ -46,6 +46,24 @@ describe('log redaction', () => {
 
     test('does not alter text when no secret is configured', () => {
         expect(redactSecret('plain failure', '')).toBe('plain failure');
+    });
+});
+
+describe('rendered client recovery', () => {
+    test('requests a restart after consecutive login-screen probes', () => {
+        const watchdog = new RenderedClientWatchdog(3);
+        expect(watchdog.record(false)).toBe(false);
+        expect(watchdog.record(false)).toBe(false);
+        expect(watchdog.record(false)).toBe(true);
+    });
+
+    test('forgives a transient disconnect after the page returns in-game', () => {
+        const watchdog = new RenderedClientWatchdog(3);
+        expect(watchdog.record(false)).toBe(false);
+        expect(watchdog.record(false)).toBe(false);
+        expect(watchdog.record(true)).toBe(false);
+        expect(watchdog.record(false)).toBe(false);
+        expect(watchdog.record(false)).toBe(false);
     });
 });
 

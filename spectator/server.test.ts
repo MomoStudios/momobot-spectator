@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createObserverConfig, createRequestHandler, loadAssets, parseEnvFile } from './server';
+import { createObserverConfig, createRequestHandler, effectiveObserverConnection, loadAssets, parseEnvFile } from './server';
 
 describe('parseEnvFile', () => {
     test('parses bot configuration without treating comments as values', () => {
@@ -25,6 +25,8 @@ describe('spectator static assets', () => {
         expect(skillIcons[25]).toBe(6);
         const html = String(assets['/']?.body);
         const app = String(assets['/app.js']?.body);
+        expect(app).toContain('renderGameFeed(null, false)');
+        expect(app).toContain('latestPayload = offlinePayload');
         expect(app).not.toContain('buildVicinityModel');
         expect(app).not.toContain('renderVicinity');
         expect(html).toContain('>Messages</button>');
@@ -57,12 +59,30 @@ describe('spectator observer configuration', () => {
         expect(config.connectionMode).toBe('observe');
         expect(config.showChat).toBe(true);
     });
+
+    test('uses the gateway state timestamp and retries without process restart storms', async () => {
+        const source = await Bun.file(new URL('./server.ts', import.meta.url)).text();
+        expect(source).toContain('sdk.getStateReceivedAt()');
+        expect(source).toContain('observerWatchdog.transportRetryDue()');
+        expect(source).not.toContain('exiting for managed restart');
+    });
+});
+
+describe('effectiveObserverConnection', () => {
+    test('never reports an old gateway replay as connected', () => {
+        expect(effectiveObserverConnection('connected', { observedAt: 1_000 }, 20_000)).toBe('stale');
+    });
+
+    test('returns connected only for fresh authoritative state', () => {
+        expect(effectiveObserverConnection('connected', { observedAt: 15_000 }, 20_000)).toBe('connected');
+        expect(effectiveObserverConnection('disconnected', { observedAt: 20_000 }, 20_000)).toBe('disconnected');
+    });
 });
 
 describe('spectator HTTP handler', () => {
     const payload = {
         connection: 'connected',
-        state: { player: { name: 'Momobot' } },
+        state: { observedAt: Date.now(), player: { name: 'Momobot' } },
         events: []
     };
     const handler = createRequestHandler({
@@ -96,6 +116,18 @@ describe('spectator HTTP handler', () => {
         expect(response.status).toBe(200);
         expect(response.headers.get('cache-control')).toBe('no-store');
         expect(await response.json()).toEqual(payload);
+    });
+
+    test('accepts fresh connected observer state in health checks', async () => {
+        expect((await handler(new Request('http://localhost/healthz'))).status).toBe(200);
+    });
+
+    test('rejects stale observer state from health checks', async () => {
+        const staleHandler = createRequestHandler({
+            getPayload: () => ({ connection: 'connected', state: { observedAt: Date.now() - 30_000 } }),
+            assets: {}
+        });
+        expect((await staleHandler(new Request('http://localhost/healthz'))).status).toBe(503);
     });
 
     test('rejects writes and unknown routes', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeState, summarizeActivity } from './state';
+import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeMessageHistory, sanitizeState, summarizeActivity } from './state';
 
 function baseState() {
     return {
@@ -55,6 +55,40 @@ describe('sanitizeState', () => {
         expect(JSON.stringify(publicState)).not.toContain('secret pm');
         expect(JSON.stringify(publicState)).not.toContain('must-never-leak');
         expect(JSON.stringify(publicState)).not.toContain('optionsWithIndex');
+    });
+});
+
+describe('sanitizeMessageHistory', () => {
+    test('preserves unified chronological occurrences and filters private chat', () => {
+        const messages = [
+            { observationId: 7, type: 2, text: 'same', sender: 'A', tick: 10, fromSelf: false },
+            { observationId: 7, type: 2, text: 'same', sender: 'A', tick: 10, fromSelf: false },
+            { type: 0, text: 'game', sender: '', tick: 10, fromSelf: false },
+            { type: 3, text: 'secret', sender: 'Private', tick: 10, fromSelf: false }
+        ] as any;
+
+        const result = sanitizeMessageHistory(messages, 10, 1000);
+        expect(result.history.map(message => message.text)).toEqual(['same', 'same', 'game']);
+        expect(result.chatMessages.map(message => message.text)).toEqual(['same', 'same']);
+        expect(result.gameMessages.map(message => message.text)).toEqual(['game']);
+        expect(JSON.stringify(result)).not.toContain('secret');
+        expect(JSON.stringify(result)).not.toContain('observationId');
+    });
+
+    test('enforces one aggregate 500-message bound before partitioning', () => {
+        const messages = Array.from({ length: 600 }, (_, index) => ({
+            type: index % 2 === 0 ? 0 : 2,
+            text: `message-${index}`,
+            sender: index % 2 === 0 ? '' : 'A',
+            tick: index,
+            fromSelf: false
+        })) as any;
+
+        const result = sanitizeMessageHistory(messages, 600, 1000, 500);
+        expect(result.history).toHaveLength(500);
+        expect(result.gameMessages.length + result.chatMessages.length).toBe(500);
+        expect(result.history[0].text).toBe('message-100');
+        expect(result.history.at(-1)?.text).toBe('message-599');
     });
 });
 

@@ -1,7 +1,8 @@
 import { BotSDK, deriveGatewayUrl } from '../sdk/index';
 import type { BotWorldState, ConnectionState, SDKConfig } from '../sdk/types';
-import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeState, type PublicEvent, type PublicSnapshot, type SessionBaseline } from './state';
+import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeMessageHistory, sanitizeState, type PublicEvent, type PublicSnapshot, type SessionBaseline } from './state';
 import { loadPublicMission, type PublicMission } from './mission';
+import { ObserverWatchdog } from './observer-watchdog';
 
 interface Asset {
     body: BodyInit;
@@ -27,6 +28,14 @@ const EMBEDDABLE_SECURITY_HEADERS: Record<string, string> = {
     'content-security-policy': "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'",
     'x-frame-options': 'SAMEORIGIN'
 };
+
+const STATE_FRESHNESS_MS = 10_000;
+
+export function effectiveObserverConnection(connection: ConnectionState, state: { observedAt?: number } | null, now: number = Date.now()): ConnectionState | 'stale' {
+    if (connection !== 'connected') return connection;
+    const observedAt = Number(state?.observedAt);
+    return Number.isFinite(observedAt) && now - observedAt < STATE_FRESHNESS_MS ? 'connected' : 'stale';
+}
 
 export function parseEnvFile(text: string): Record<string, string> {
     const values: Record<string, string> = {};
@@ -66,8 +75,8 @@ export function createRequestHandler(options: HandlerOptions): (request: Request
 
         const url = new URL(request.url);
         if (url.pathname === '/healthz') {
-            const payload = options.getPayload() as { connection?: string; state?: unknown };
-            const healthy = payload.connection === 'connected' && Boolean(payload.state);
+            const payload = options.getPayload() as { connection?: ConnectionState; state?: { observedAt?: number } | null };
+            const healthy = effectiveObserverConnection(payload.connection ?? 'disconnected', payload.state ?? null) === 'connected';
             return new Response(request.method === 'HEAD' ? null : JSON.stringify({ ok: healthy }), {
                 status: healthy ? 200 : 503,
                 headers: responseHeaders('application/json; charset=utf-8', 'no-store')
@@ -167,28 +176,56 @@ async function main(): Promise<void> {
     let sessionStartedAt = 0;
     let state: PublicSnapshot | null = null;
     let events: PublicEvent[] = [];
+
     let mission: PublicMission | null = null;
     const missionPath = `${import.meta.dir}/../bots/${botName}/public-mission.json`;
     const refreshMission = async () => { mission = await loadPublicMission(missionPath); };
     await refreshMission();
     const missionTimer = setInterval(() => { void refreshMission(); }, 1_000);
 
-    sdk.onConnectionStateChange(next => { connection = next; });
+    const observerWatchdog = new ObserverWatchdog(60_000);
+    sdk.onConnectionStateChange(next => {
+        connection = next;
+        observerWatchdog.update(next);
+    });
     sdk.onStateUpdate(next => {
         if (!next.player) return;
         const now = Date.now();
+        const stateReceivedAt = sdk.getStateReceivedAt();
         if (!sessionBaseline) {
             sessionBaseline = captureSessionBaseline(next);
             sessionStartedAt = now;
         }
         const freshEvents = deriveEvents(previous, next, now);
         if (freshEvents.length) events = [...freshEvents, ...events].slice(0, 100);
-        state = sanitizeState(next, now);
+        const snapshot = sanitizeState(next, stateReceivedAt);
+        const messages = sanitizeMessageHistory(
+            sdk.getChat({ limit: 0, types: [0, 1, 2], includeSelf: true }),
+            next.tick,
+            stateReceivedAt
+        );
+        state = {
+            ...snapshot,
+            gameMessages: messages.gameMessages,
+            chatMessages: messages.chatMessages
+        };
+        observerWatchdog.heartbeat(stateReceivedAt);
         previous = next;
     });
 
+    let reconnectInFlight = false;
+    const observerTimer = setInterval(() => {
+        if (reconnectInFlight || !observerWatchdog.transportRetryDue()) return;
+        observerWatchdog.rearmTransport();
+        reconnectInFlight = true;
+        console.error('[spectator] Observer transport remained disconnected for 60s; retrying explicitly');
+        sdk.connect()
+            .catch(error => console.error(`[spectator] Explicit observer reconnect failed: ${error instanceof Error ? error.message : String(error)}`))
+            .finally(() => { reconnectInFlight = false; });
+    }, 5_000);
+
     const getPayload = () => ({
-        connection,
+        connection: effectiveObserverConnection(connection, state),
         state,
         events,
         mission,
@@ -206,6 +243,7 @@ async function main(): Promise<void> {
 
     const shutdown = () => {
         clearInterval(missionTimer);
+        clearInterval(observerTimer);
         sdk.disconnect();
         server.stop();
         process.exit(0);

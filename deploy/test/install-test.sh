@@ -47,6 +47,19 @@ else
     fail 'origin readiness allows rendered-client cold starts'
 fi
 
+# Spectator production modules are outside the root tsconfig include list; deploy must type-check them explicitly.
+if python3 - <<'PY'
+import pathlib
+install = pathlib.Path('deploy/install.sh').read_text()
+required = ('running strict spectator TypeScript validation', '"$NEXT_SPECTATOR/server.ts"', '"$NEXT_SPECTATOR/state.ts"', '"$NEXT_SPECTATOR/observer-watchdog.ts"')
+raise SystemExit(0 if all(value in install for value in required) else 1)
+PY
+then
+    pass 'deployment strictly type-checks spectator production modules'
+else
+    fail 'deployment strictly type-checks spectator production modules'
+fi
+
 # Preserve Git modes during archive extraction; compare content/symlinks/modes/deletions, never timestamps/owners.
 if python3 - <<'PY'
 import pathlib

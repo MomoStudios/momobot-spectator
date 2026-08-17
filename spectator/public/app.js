@@ -1,6 +1,6 @@
 import { buildFocusModel, formatAge, formatClock, formatDuration, formatNumber } from './view-model.js?v=6';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
-import { feedTabForKey, normalizeFeedTab } from './feed-view.js?v=1';
+import { feedContentForConnection, feedMessagesForConnection, feedTabForKey, normalizeFeedTab } from './feed-view.js?v=3';
 import { skillIconIndex } from './skill-icons.js?v=1';
 
 const $ = id => document.getElementById(id);
@@ -165,10 +165,10 @@ function renderTimeline(events) {
     }
 }
 
-function renderMessageList(containerId, messages, emptyCopy, playerChat = false) {
+function renderMessageList(containerId, messages, emptyCopy, playerChat = false, observerConnected = true) {
     const container = $(containerId);
     clear(container);
-    const recent = [...messages].reverse().slice(0, 20);
+    const recent = feedMessagesForConnection(messages, observerConnected);
     if (!recent.length) container.append(element('div', 'empty-state', emptyCopy));
     for (const message of recent) {
         const row = element('div', 'message-row');
@@ -182,12 +182,17 @@ function renderMessageList(containerId, messages, emptyCopy, playerChat = false)
     }
 }
 
-function renderGameFeed(state) {
-    renderMessageList('game-messages', state.gameMessages || [], 'No recent game messages');
-    renderMessageList('chat-messages', state.chatMessages || [], 'No recent public chat', true);
+function renderGameFeed(state, observerConnected) {
+    const feed = feedContentForConnection(state, observerConnected);
+    renderMessageList('game-messages', feed.gameMessages, feed.gameEmpty, false, observerConnected);
+    renderMessageList('chat-messages', feed.chatMessages, feed.chatEmpty, true, observerConnected);
 
     const dialogCard = $('dialog-card');
     clear(dialogCard);
+    if (!observerConnected || !state) {
+        dialogCard.classList.add('hidden');
+        return;
+    }
     if (state.dialog.isOpen || state.dialogs.length) {
         const latest = state.dialogs[state.dialogs.length - 1];
         if (latest?.text?.length) {
@@ -396,13 +401,16 @@ function render(payload) {
     latestPayload = payload;
     renderConnection(payload);
     renderMission(payload.mission, payload.session, payload.state);
-    if (!payload.state) return;
+    if (!payload.state) {
+        renderGameFeed(null, false);
+        return;
+    }
     renderVitals(payload.state);
     renderSession(payload.session);
     renderSkills(payload.state.skills);
     renderItems(payload.state);
     renderTimeline(payload.events || []);
-    renderGameFeed(payload.state);
+    renderGameFeed(payload.state, payload.connection === 'connected');
     renderNearby(payload.state);
     postMapPosition(payload.state);
 }
@@ -415,7 +423,15 @@ async function poll() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         render(await response.json());
     } catch (error) {
-        renderConnection({ connection: 'disconnected', state: null });
+        const offlinePayload = {
+            connection: 'disconnected',
+            state: null,
+            mission: latestPayload?.mission || null,
+            session: null,
+            events: []
+        };
+        latestPayload = offlinePayload;
+        render(offlinePayload);
         setText('current-focus', 'Observer feed unavailable');
         setText('current-context', 'The public state service is reconnecting');
     } finally {

@@ -248,6 +248,13 @@ if (( ! SKIP_TESTS )); then
     (trap - ERR INT TERM HUP; cd "$RS_SDK_ROOT" && bun test "spikes/$(basename "$NEXT_STREAM")")
     log "running TypeScript validation"
     (trap - ERR INT TERM HUP; cd "$RS_SDK_ROOT" && bunx tsc --noEmit)
+    log "running strict spectator TypeScript validation"
+    (trap - ERR INT TERM HUP; cd "$RS_SDK_ROOT" && bunx tsc \
+        --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --types bun --skipLibCheck \
+        "$NEXT_SPECTATOR/server.ts" \
+        "$NEXT_SPECTATOR/state.ts" \
+        "$NEXT_SPECTATOR/mission.ts" \
+        "$NEXT_SPECTATOR/observer-watchdog.ts")
 fi
 
 if (( CHECK_ONLY )); then

@@ -254,6 +254,7 @@ if (( ! SKIP_TESTS )); then
         "$NEXT_SPECTATOR/server.ts" \
         "$NEXT_SPECTATOR/state.ts" \
         "$NEXT_SPECTATOR/mission.ts" \
+        "$NEXT_SPECTATOR/controller-status.ts" \
         "$NEXT_SPECTATOR/observer-watchdog.ts" \
         "$NEXT_SPECTATOR/set-public-mission.ts")
 fi

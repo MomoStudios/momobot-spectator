@@ -28,11 +28,15 @@ describe('spectator static assets', () => {
         const styles = String(assets['/styles.css']?.body);
         expect(app).toContain('renderGameFeed(null, false)');
         expect(app).toContain('latestPayload = offlinePayload');
-        expect(app).toContain('visibleNowChecking');
+        expect(app).toContain('visibleOperationalStatus');
+        expect(app).toContain('payload.controllerStatus');
         expect(app).toContain('effectivePayloadConnection');
         expect(app).toContain('new AbortController()');
+        expect(app).toContain('updateAttribute');
+        expect(app).toContain("setText('now-checking-label'");
         expect(app).toContain("setText('now-checking-text'");
         expect(html).toContain('id="now-checking"');
+        expect(html).toContain('id="now-checking-label"');
         expect(html).toContain('id="now-checking-text" aria-live="polite" aria-atomic="true"');
         expect(html).toContain('id="now-checking-age" aria-hidden="true"');
         expect(html).toContain('>NOW CHECKING<');

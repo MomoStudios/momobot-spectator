@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildFocusModel, buildMapModel, describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, totalLevel, updateTextContent, visibleNowChecking } from './public/view-model.js';
+import { buildFocusModel, buildMapModel, describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, totalLevel, updateAttribute, updateTextContent, visibleNowChecking, visibleOperationalStatus } from './public/view-model.js';
 
 const snapshot = {
     player: { worldX: 100, worldZ: 200, level: 1 },
@@ -49,18 +49,26 @@ describe('dashboard view model', () => {
         expect(effectivePayloadConnection({ connection: 'connected', state: { observedAt: 20_000 } }, 1_000)).toBe('stale');
     });
 
-    test('does not rewrite unchanged live-region text', () => {
+    test('does not rewrite unchanged live-region text or accessible status', () => {
         let value = 'Checking live combat.';
         let writes = 0;
+        const attributes = new Map([['aria-label', 'NOW CHECKING: Checking live combat.']]);
         const node = {
             get textContent() { return value; },
-            set textContent(next) { value = next; writes++; }
+            set textContent(next) { value = next; writes++; },
+            getAttribute(name) { return attributes.get(name) ?? null; },
+            setAttribute(name, next) { attributes.set(name, next); writes++; },
+            removeAttribute(name) { attributes.delete(name); writes++; }
         };
         expect(updateTextContent(node, 'Checking live combat.')).toBe(false);
+        expect(updateAttribute(node, 'aria-label', 'NOW CHECKING: Checking live combat.')).toBe(false);
         expect(writes).toBe(0);
         expect(updateTextContent(node, 'Checking the proof page.')).toBe(true);
-        expect(writes).toBe(1);
+        expect(updateAttribute(node, 'aria-label', 'NOW RUNNING: Checking the proof page.')).toBe(true);
+        expect(writes).toBe(2);
         expect(value).toBe('Checking the proof page.');
+        expect(updateAttribute(node, 'aria-label', null)).toBe(true);
+        expect(attributes.has('aria-label')).toBe(false);
     });
 
     test('shows only fresh now-checking status from a live observer', () => {
@@ -71,6 +79,22 @@ describe('dashboard view model', () => {
         expect(visibleNowChecking(mission, 'connected', now + 60_000)).toBeNull();
         expect(visibleNowChecking({ nowChecking: { text: 'Future status', updatedAt: '2026-08-17T18:32:10.000Z' } }, 'connected', now)).toBeNull();
         expect(visibleNowChecking({ nowChecking: { text: 'Broken', updatedAt: 'invalid' } }, 'connected', now)).toBeNull();
+    });
+
+    test('prefers manual status and otherwise shows only a live controller fallback', () => {
+        const now = Date.parse('2026-08-17T18:32:00.000Z');
+        const mission = { nowChecking: { text: 'Checking Merlin dialogue.', updatedAt: '2026-08-17T18:31:30.000Z' } };
+        const controllerStatus = { text: 'Running Holy Grail Start · Speak with Merlin', updatedAt: '2026-08-17T18:31:59.000Z' };
+        expect(visibleOperationalStatus(mission, controllerStatus, 'connected', now)).toEqual({
+            label: 'NOW CHECKING',
+            ...mission.nowChecking
+        });
+        expect(visibleOperationalStatus({}, controllerStatus, 'connected', now)).toEqual({
+            label: 'NOW RUNNING',
+            ...controllerStatus
+        });
+        expect(visibleOperationalStatus({}, controllerStatus, 'connected', now + 10_000)).toBeNull();
+        expect(visibleOperationalStatus({}, controllerStatus, 'stale', now)).toBeNull();
     });
 
     test('formats dashboard metrics', () => {

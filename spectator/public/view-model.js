@@ -48,12 +48,36 @@ export function updateTextContent(node, value) {
     return true;
 }
 
+export function updateAttribute(node, name, value) {
+    if (!node) return false;
+    if (value === null) {
+        if (!node.hasAttribute?.(name) && node.getAttribute?.(name) === null) return false;
+        node.removeAttribute(name);
+        return true;
+    }
+    const text = String(value);
+    if (node.getAttribute(name) === text) return false;
+    node.setAttribute(name, text);
+    return true;
+}
+
 export function visibleNowChecking(mission, connection, now = Date.now(), maxAgeMs = 120_000) {
     const status = mission?.nowChecking;
     const updatedAt = Date.parse(status?.updatedAt);
     const age = now - updatedAt;
     if (connection !== 'connected' || typeof status?.text !== 'string' || !Number.isFinite(updatedAt)) return null;
     return age >= -5_000 && age < maxAgeMs ? status : null;
+}
+
+export function visibleOperationalStatus(mission, controllerStatus, connection, now = Date.now(), maxControllerAgeMs = 10_000) {
+    const manual = visibleNowChecking(mission, connection, now);
+    if (manual) return { label: 'NOW CHECKING', ...manual };
+    const updatedAt = Date.parse(controllerStatus?.updatedAt);
+    const age = now - updatedAt;
+    if (connection !== 'connected' || typeof controllerStatus?.text !== 'string' || !Number.isFinite(updatedAt)) return null;
+    return age >= -5_000 && age < maxControllerAgeMs
+        ? { label: 'NOW RUNNING', text: controllerStatus.text, updatedAt: controllerStatus.updatedAt }
+        : null;
 }
 
 const LOCATION_REGIONS = [

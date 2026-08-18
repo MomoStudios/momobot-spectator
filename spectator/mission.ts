@@ -31,7 +31,9 @@ function record(value: unknown): Record<string, unknown> | null {
 function boundedString(value: unknown, maxLength: number): string | null {
     if (typeof value !== 'string') return null;
     const normalized = value.trim();
-    return normalized.length > 0 && normalized.length <= maxLength ? normalized : null;
+    return normalized.length > 0 && normalized.length <= maxLength && !/[\p{Cc}\p{Cf}]/u.test(normalized)
+        ? normalized
+        : null;
 }
 
 export function sanitizePublicMission(value: unknown): PublicMission | null {

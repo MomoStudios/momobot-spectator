@@ -1,4 +1,4 @@
-import { buildFocusModel, formatAge, formatClock, formatDuration, formatNumber } from './view-model.js?v=6';
+import { buildFocusModel, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, updateTextContent, visibleNowChecking } from './view-model.js?v=8';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedContentForConnection, feedMessagesForConnection, feedTabForKey, normalizeFeedTab } from './feed-view.js?v=3';
 import { skillIconIndex } from './skill-icons.js?v=1';
@@ -21,8 +21,7 @@ let streamFps = 0;
 let streamFpsStartedAt = performance.now();
 
 function setText(id, value) {
-    const node = $(id);
-    if (node) node.textContent = String(value);
+    updateTextContent($(id), value);
 }
 
 function clear(node) {
@@ -66,13 +65,18 @@ function renderVitals(state) {
     setText('tick-label', `tick ${state.tick} · rev ${state.revision}`);
 }
 
-function renderMission(mission, session, state) {
+function renderMission(mission, session, state, connection) {
     const skills = state?.skills || [];
     const mastered = session?.skillsMastered ?? skills.filter(skill => skill.baseLevel >= 99).length;
     const skillCount = session?.skillCount ?? skills.length;
     setText('mission-progress', `${mastered} / ${skillCount || 19}`);
     $('mission-bar').max = Math.max(1, skillCount || 19);
     $('mission-bar').value = mastered;
+
+    const nowChecking = visibleNowChecking(mission, connection);
+    $('now-checking').classList.toggle('hidden', !nowChecking);
+    setText('now-checking-text', nowChecking?.text || '');
+    setText('now-checking-age', nowChecking ? formatAge(Date.parse(nowChecking.updatedAt)) : '');
 
     const tasks = $('mission-tasks');
     clear(tasks);
@@ -399,8 +403,9 @@ function updateMapMode() {
 
 function render(payload) {
     latestPayload = payload;
-    renderConnection(payload);
-    renderMission(payload.mission, payload.session, payload.state);
+    const connection = effectivePayloadConnection(payload);
+    renderConnection({ ...payload, connection });
+    renderMission(payload.mission, payload.session, payload.state, connection);
     if (!payload.state) {
         renderGameFeed(null, false);
         return;
@@ -410,7 +415,7 @@ function render(payload) {
     renderSkills(payload.state.skills);
     renderItems(payload.state);
     renderTimeline(payload.events || []);
-    renderGameFeed(payload.state, payload.connection === 'connected');
+    renderGameFeed(payload.state, connection === 'connected');
     renderNearby(payload.state);
     postMapPosition(payload.state);
 }
@@ -418,8 +423,10 @@ function render(payload) {
 async function poll() {
     if (polling) return;
     polling = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
     try {
-        const response = await fetch('/api/state', { cache: 'no-store' });
+        const response = await fetch('/api/state', { cache: 'no-store', signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         render(await response.json());
     } catch (error) {
@@ -435,6 +442,7 @@ async function poll() {
         setText('current-focus', 'Observer feed unavailable');
         setText('current-context', 'The public state service is reconnecting');
     } finally {
+        clearTimeout(timeout);
         polling = false;
     }
 }
@@ -471,8 +479,10 @@ for (const name of ['messages', 'chat']) {
 }
 setInterval(() => {
     if (latestPayload) {
-        renderConnection(latestPayload);
-        renderMission(latestPayload.mission, latestPayload.session, latestPayload.state);
+        const connection = effectivePayloadConnection(latestPayload);
+        renderConnection({ ...latestPayload, connection });
+        renderMission(latestPayload.mission, latestPayload.session, latestPayload.state, connection);
+        if (connection !== 'connected') renderGameFeed(latestPayload.state, false);
         renderTimeline(latestPayload.events || []);
     }
 }, 1000);

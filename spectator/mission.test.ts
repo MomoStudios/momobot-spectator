@@ -53,6 +53,8 @@ describe('sanitizePublicMission', () => {
         expect(sanitizePublicMission({ ...validMission, updatedAt: 'not-a-date' })).toBeNull();
         expect(sanitizePublicMission({ ...validMission, nowChecking: { text: 'x'.repeat(181), updatedAt: validMission.updatedAt } })).toBeNull();
         expect(sanitizePublicMission({ ...validMission, nowChecking: { text: 'Checking combat state', updatedAt: 'not-a-date' } })).toBeNull();
+        expect(sanitizePublicMission({ ...validMission, title: 'Safe\u202Ehidden' })).toBeNull();
+        expect(sanitizePublicMission({ ...validMission, nowChecking: { text: 'Safe\u2066hidden', updatedAt: validMission.updatedAt } })).toBeNull();
     });
 
     test('publishes a bounded allowlisted now-checking status', () => {

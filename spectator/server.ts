@@ -2,6 +2,7 @@ import { BotSDK, deriveGatewayUrl } from '../sdk/index';
 import type { BotWorldState, ConnectionState, SDKConfig } from '../sdk/types';
 import { captureSessionBaseline, deriveEvents, deriveSessionProgress, sanitizeMessageHistory, sanitizeState, type PublicEvent, type PublicSnapshot, type SessionBaseline } from './state';
 import { loadPublicMission, type PublicMission } from './mission';
+import { readControllerStatus, type PublicControllerStatus } from './controller-status';
 import { ObserverWatchdog } from './observer-watchdog';
 
 interface Asset {
@@ -178,10 +179,20 @@ async function main(): Promise<void> {
     let events: PublicEvent[] = [];
 
     let mission: PublicMission | null = null;
+    let controllerStatus: PublicControllerStatus | null = null;
     const missionPath = `${import.meta.dir}/../bots/${botName}/public-mission.json`;
-    const refreshMission = async () => { mission = await loadPublicMission(missionPath); };
-    await refreshMission();
-    const missionTimer = setInterval(() => { void refreshMission(); }, 1_000);
+    let publicStateRefreshInFlight = false;
+    const refreshPublicState = async () => {
+        const nextMission = await loadPublicMission(missionPath);
+        mission = nextMission;
+        controllerStatus = await readControllerStatus({ botName, mission: nextMission });
+    };
+    await refreshPublicState();
+    const missionTimer = setInterval(() => {
+        if (publicStateRefreshInFlight) return;
+        publicStateRefreshInFlight = true;
+        void refreshPublicState().finally(() => { publicStateRefreshInFlight = false; });
+    }, 1_000);
 
     const observerWatchdog = new ObserverWatchdog(60_000);
     sdk.onConnectionStateChange(next => {
@@ -229,6 +240,7 @@ async function main(): Promise<void> {
         state,
         events,
         mission,
+        controllerStatus,
         session: sessionBaseline && previous ? deriveSessionProgress(sessionBaseline, previous, sessionStartedAt) : null,
         serverTime: Date.now()
     });

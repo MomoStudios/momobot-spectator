@@ -38,7 +38,14 @@ The loop:
    explicit public-intent channel. The schema allowlists a title, objective,
    timestamp, at most six `done`/`active`/`pending` tasks, and an optional bounded
    `nowChecking` operational status with its own timestamp.
-5. The browser polls `/api/state`.
+5. Momobot controllers hold a private kernel `flock` under the shared per-user
+   runtime directory (`/run/user/<uid>/rs-sdk-<uid>/`). `readControllerStatus()`
+   verifies that the guard is currently locked, lock metadata is unchanged, and the
+   live PID's process-start identity matches. It then derives **NOW RUNNING** only
+   from the fully sanitized public mission's single active task. No second status
+   artifact exists, and the spectator never reads argv, filenames, source code,
+   prompts, transcripts, tokens, or credentials.
+6. The browser polls `/api/state`.
 
 Endpoints: `/api/state`, `/healthz` (503 unless connected *and* state exists).
 
@@ -86,13 +93,20 @@ needs an iframe and a worker.
 **Password scrubbing:** the stream server strips `env.PASSWORD` from page errors
 and console output before logging.
 
-**Public mission boundary:** the dashboard never derives intent from controller
-transcripts, process arguments, or private planning. It accepts only the bounded
-`PublicMission` schema from `bots/<botname>/public-mission.json`; malformed files
-fail closed to an empty mission card and unknown fields are discarded. The
-`nowChecking` field is a deliberately authored, viewer-safe operational summary—not
-raw chain-of-thought—and disappears from the UI when older than two minutes or when
-the observer is not provably connected.
+**Public operational-status boundary:** the dashboard never publishes controller
+transcripts, raw process arguments, private planning, prompts, credentials, or source
+code. It accepts the bounded `PublicMission` schema from
+`bots/<botname>/public-mission.json`; malformed files fail closed to an empty mission
+card and unknown fields are discarded. A fresh deliberately authored `nowChecking`
+summary has priority. When that is absent or stale, the dashboard may show a
+**NOW RUNNING** fallback derived only while the private per-user controller guard is
+held by the PID/start identity in unchanged lock metadata. The spectator checks the
+kernel `flock` before and after identity verification, then derives text only from the
+fully sanitized public mission's single active task. It never reads argv or filenames,
+and there is no same-user writable status artifact. The fallback disappears within
+ten seconds of controller exit, observer staleness, or poll failure. `nowChecking` remains a viewer-safe operational summary—not raw
+chain-of-thought—and disappears when older than two minutes or when the observer is
+not provably connected.
 
 Tests assert these properties — see `spectator/state.test.ts`, which checks that
 a private message and a password fixture never appear in serialized output.

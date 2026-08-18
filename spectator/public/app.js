@@ -1,4 +1,4 @@
-import { describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, updateTextContent, visibleNowChecking } from './view-model.js?v=9';
+import { describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, updateAttribute, updateTextContent, visibleOperationalStatus } from './view-model.js?v=10';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedContentForConnection, feedMessagesForConnection, feedTabForKey, normalizeFeedTab } from './feed-view.js?v=3';
 import { skillIconIndex } from './skill-icons.js?v=1';
@@ -63,7 +63,7 @@ function renderVitals(state) {
     setText('tick-label', `tick ${state.tick} · rev ${state.revision}`);
 }
 
-function renderMission(mission, session, state, connection) {
+function renderMission(mission, controllerStatus, session, state, connection) {
     const skills = state?.skills || [];
     const mastered = session?.skillsMastered ?? skills.filter(skill => skill.baseLevel >= 99).length;
     const skillCount = session?.skillCount ?? skills.length;
@@ -71,10 +71,16 @@ function renderMission(mission, session, state, connection) {
     $('mission-bar').max = Math.max(1, skillCount || 19);
     $('mission-bar').value = mastered;
 
-    const nowChecking = visibleNowChecking(mission, connection);
-    $('now-checking').classList.toggle('hidden', !nowChecking);
-    setText('now-checking-text', nowChecking?.text || '');
-    setText('now-checking-age', nowChecking ? formatAge(Date.parse(nowChecking.updatedAt)) : '');
+    const operationalStatus = visibleOperationalStatus(mission, controllerStatus, connection);
+    $('now-checking').classList.toggle('hidden', !operationalStatus);
+    setText('now-checking-label', operationalStatus?.label || 'NOW CHECKING');
+    setText('now-checking-text', operationalStatus?.text || '');
+    updateAttribute(
+        $('now-checking-text'),
+        'aria-label',
+        operationalStatus ? `${operationalStatus.label}: ${operationalStatus.text}` : null
+    );
+    setText('now-checking-age', operationalStatus ? formatAge(Date.parse(operationalStatus.updatedAt)) : '');
 
     const tasks = $('mission-tasks');
     clear(tasks);
@@ -403,7 +409,7 @@ function render(payload) {
     latestPayload = payload;
     const connection = effectivePayloadConnection(payload);
     renderConnection({ ...payload, connection });
-    renderMission(payload.mission, payload.session, payload.state, connection);
+    renderMission(payload.mission, payload.controllerStatus, payload.session, payload.state, connection);
     if (!payload.state) {
         renderGameFeed(null, false);
         return;
@@ -432,6 +438,7 @@ async function poll() {
             connection: 'disconnected',
             state: null,
             mission: latestPayload?.mission || null,
+            controllerStatus: null,
             session: null,
             events: []
         };
@@ -477,7 +484,7 @@ setInterval(() => {
     if (latestPayload) {
         const connection = effectivePayloadConnection(latestPayload);
         renderConnection({ ...latestPayload, connection });
-        renderMission(latestPayload.mission, latestPayload.session, latestPayload.state, connection);
+        renderMission(latestPayload.mission, latestPayload.controllerStatus, latestPayload.session, latestPayload.state, connection);
         if (connection !== 'connected') renderGameFeed(latestPayload.state, false);
         renderTimeline(latestPayload.events || []);
     }

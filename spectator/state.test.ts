@@ -151,6 +151,20 @@ describe('deriveEvents', () => {
             'Entered combat with Goblin'
         ]);
     });
+
+    test('does not emit combat events for NPC dialogue or bare face-targeting', () => {
+        const previous = baseState();
+        const talking = baseState();
+        talking.tick = 101;
+        talking.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc', lastDamageTick: -1 };
+        talking.dialog.isOpen = true;
+        expect(deriveEvents(previous, talking, 123456).filter(event => event.kind === 'combat')).toEqual([]);
+
+        const facing = baseState();
+        facing.tick = 102;
+        facing.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc', lastDamageTick: -1 };
+        expect(deriveEvents(previous, facing, 123456).filter(event => event.kind === 'combat')).toEqual([]);
+    });
 });
 
 describe('session progress', () => {
@@ -186,9 +200,25 @@ describe('session progress', () => {
 });
 
 describe('summarizeActivity', () => {
-    test('identifies the current combat target', () => {
+    test('identifies a current combat target only with combat evidence', () => {
         const state = baseState();
-        state.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc' };
+        state.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc', lastDamageTick: -1 };
+        state.nearbyNpcs[0].inCombat = true;
         expect(summarizeActivity(state)).toBe('Fighting Goblin');
+    });
+
+    test('identifies dialogue with a faced NPC instead of calling it combat', () => {
+        const state = baseState();
+        state.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc', lastDamageTick: -1 };
+        state.dialog.isOpen = true;
+        expect(summarizeActivity(state)).toBe('In dialogue');
+        expect(sanitizeState(state).player.inCombat).toBe(false);
+    });
+
+    test('does not call bare face-targeting combat before a hit', () => {
+        const state = baseState();
+        state.player.combat = { inCombat: true, targetIndex: 9, targetType: 'npc', lastDamageTick: -1 };
+        expect(summarizeActivity(state)).toBe('Exploring');
+        expect(sanitizeState(state).player.inCombat).toBe(false);
     });
 });

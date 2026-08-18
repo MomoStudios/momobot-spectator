@@ -96,17 +96,46 @@ export function sanitizeMessageHistory(messages: GameMessage[], currentTick: num
     };
 }
 
+function combatTarget(state: BotWorldState) {
+    const combat = state.player?.combat;
+    if (!combat || combat.targetType === 'none' || combat.targetIndex < 0) return null;
+    if (combat.targetType === 'npc') {
+        const target = state.nearbyNpcs?.find(npc => npc.index === combat.targetIndex);
+        return target ? { kind: 'npc' as const, entity: target } : null;
+    }
+    const target = state.nearbyPlayers?.find(player => player.index === combat.targetIndex);
+    return target ? { kind: 'player' as const, entity: target } : null;
+}
+
+function hasCorroboratedCombat(state: BotWorldState | null): boolean {
+    const player = state?.player;
+    if (!state?.inGame || !player?.combat?.inCombat || state.dialog?.isOpen) return false;
+    const target = combatTarget(state);
+    if (!target) return false;
+    if (target.kind === 'npc' && target.entity.inCombat) return true;
+
+    const minimumTick = state.tick - 16;
+    return (state.combatEvents ?? []).some(combatEvent => {
+        if (combatEvent.tick < minimumTick) return false;
+        if (target.kind === 'npc') {
+            return (combatEvent.targetType === 'npc' && combatEvent.targetIndex === target.entity.index)
+                || (combatEvent.sourceType === 'npc' && combatEvent.sourceIndex === target.entity.index);
+        }
+        return ((combatEvent.targetType === 'other_player' || combatEvent.targetType === 'player')
+                && combatEvent.targetIndex === target.entity.index)
+            || (combatEvent.sourceType === 'other_player' && combatEvent.sourceIndex === target.entity.index);
+    });
+}
+
 export function summarizeActivity(state: BotWorldState | null): string {
     const player = state?.player;
     if (!state?.inGame || !player) return 'Offline';
     if (player.isDead) return 'Respawning';
-    if (player.combat?.inCombat) {
-        const target = player.combat.targetType === 'npc'
-            ? state.nearbyNpcs?.find(npc => npc.index === player.combat.targetIndex)
-            : state.nearbyPlayers?.find(nearbyPlayer => nearbyPlayer.index === player.combat.targetIndex);
-        return target ? `Fighting ${target.name}` : 'In combat';
-    }
     if (state.dialog?.isOpen) return 'In dialogue';
+    if (hasCorroboratedCombat(state)) {
+        const target = combatTarget(state);
+        return target ? `Fighting ${target.entity.name}` : 'In combat';
+    }
     if (state.modalOpen) return 'Using an interface';
     if (player.animId >= 0) return 'Performing an action';
     return 'Exploring';
@@ -132,7 +161,7 @@ export function sanitizeState(state: BotWorldState, observedAt: number = Date.no
             worldZ: player.worldZ,
             level: player.level,
             runEnergy: player.runEnergy,
-            inCombat: player.combat?.inCombat ?? false,
+            inCombat: hasCorroboratedCombat(state),
             isDead: player.isDead,
             respawnCount: player.respawnCount
         },
@@ -292,12 +321,12 @@ export function deriveEvents(previous: BotWorldState | null, next: BotWorldState
         if (delta > 0) events.push(event(at, next.tick, sequence++, 'inventory', `Used or lost ${delta} × ${name}`));
     }
 
-    if (!previousPlayer.combat?.inCombat && nextPlayer.combat?.inCombat) {
-        const target = nextPlayer.combat.targetType === 'npc'
-            ? next.nearbyNpcs?.find(npc => npc.index === nextPlayer.combat.targetIndex)
-            : next.nearbyPlayers?.find(player => player.index === nextPlayer.combat.targetIndex);
-        events.push(event(at, next.tick, sequence++, 'combat', target ? `Entered combat with ${target.name}` : 'Entered combat'));
-    } else if (previousPlayer.combat?.inCombat && !nextPlayer.combat?.inCombat) {
+    const previousCombat = hasCorroboratedCombat(previous);
+    const nextCombat = hasCorroboratedCombat(next);
+    if (!previousCombat && nextCombat) {
+        const target = combatTarget(next);
+        events.push(event(at, next.tick, sequence++, 'combat', target ? `Entered combat with ${target.entity.name}` : 'Entered combat'));
+    } else if (previousCombat && !nextCombat) {
         events.push(event(at, next.tick, sequence++, 'combat', 'Combat ended'));
     }
 

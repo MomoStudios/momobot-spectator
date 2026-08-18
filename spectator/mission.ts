@@ -9,11 +9,17 @@ export interface PublicMissionTask {
     status: PublicMissionTaskStatus;
 }
 
+export interface PublicNowChecking {
+    text: string;
+    updatedAt: string;
+}
+
 export interface PublicMission {
     title: string;
     objective: string;
     updatedAt: string;
     tasks: PublicMissionTask[];
+    nowChecking?: PublicNowChecking;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -35,6 +41,14 @@ export function sanitizePublicMission(value: unknown): PublicMission | null {
     const objective = boundedString(source.objective, 240);
     const updatedAt = boundedString(source.updatedAt, 40);
     if (!title || !objective || !updatedAt || !Number.isFinite(Date.parse(updatedAt))) return null;
+    let nowChecking: PublicNowChecking | undefined;
+    if (source.nowChecking !== undefined) {
+        const status = record(source.nowChecking);
+        const text = boundedString(status?.text, 180);
+        const statusUpdatedAt = boundedString(status?.updatedAt, 40);
+        if (!text || !statusUpdatedAt || !Number.isFinite(Date.parse(statusUpdatedAt))) return null;
+        nowChecking = { text, updatedAt: statusUpdatedAt };
+    }
     if (!Array.isArray(source.tasks) || source.tasks.length < 1) return null;
 
     const tasks: PublicMissionTask[] = [];
@@ -46,7 +60,17 @@ export function sanitizePublicMission(value: unknown): PublicMission | null {
         if (!label || (status !== 'done' && status !== 'active' && status !== 'pending')) return null;
         tasks.push({ label, status });
     }
-    return { title, objective, updatedAt, tasks };
+    return { title, objective, updatedAt, tasks, ...(nowChecking ? { nowChecking } : {}) };
+}
+
+export function updateNowChecking(value: unknown, text: string | null, updatedAt: string = new Date().toISOString()): PublicMission {
+    const mission = sanitizePublicMission(value);
+    if (!mission) throw new Error('Invalid public mission');
+    const updated = sanitizePublicMission(text === null
+        ? { ...mission, nowChecking: undefined }
+        : { ...mission, nowChecking: { text, updatedAt } });
+    if (!updated) throw new Error('Invalid public now-checking status');
+    return updated;
 }
 
 export function advancePublicMission(value: unknown, updatedAt: string = new Date().toISOString()): PublicMission {

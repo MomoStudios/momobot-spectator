@@ -51,7 +51,7 @@ fi
 if python3 - <<'PY'
 import pathlib
 install = pathlib.Path('deploy/install.sh').read_text()
-required = ('running strict spectator TypeScript validation', '"$NEXT_SPECTATOR/server.ts"', '"$NEXT_SPECTATOR/state.ts"', '"$NEXT_SPECTATOR/observer-watchdog.ts"')
+required = ('running strict spectator TypeScript validation', '"$NEXT_SPECTATOR/server.ts"', '"$NEXT_SPECTATOR/state.ts"', '"$NEXT_SPECTATOR/observer-watchdog.ts"', '"$NEXT_SPECTATOR/set-public-mission.ts"')
 raise SystemExit(0 if all(value in install for value in required) else 1)
 PY
 then

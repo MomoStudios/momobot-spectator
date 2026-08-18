@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { copyFile, mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { advancePublicMission, loadPublicMission, sanitizePublicMission, writePublicMission } from './mission';
+import { advancePublicMission, loadPublicMission, sanitizePublicMission, updateNowChecking, writePublicMission } from './mission';
 import { parseMissionArguments, parseMissionCommand } from './set-public-mission';
 
 const tempDirs: string[] = [];
@@ -51,6 +51,39 @@ describe('sanitizePublicMission', () => {
         expect(sanitizePublicMission({ ...validMission, objective: 'x'.repeat(241) })).toBeNull();
         expect(sanitizePublicMission({ ...validMission, tasks: [{ label: 'Nope', status: 'blocked' }] })).toBeNull();
         expect(sanitizePublicMission({ ...validMission, updatedAt: 'not-a-date' })).toBeNull();
+        expect(sanitizePublicMission({ ...validMission, nowChecking: { text: 'x'.repeat(181), updatedAt: validMission.updatedAt } })).toBeNull();
+        expect(sanitizePublicMission({ ...validMission, nowChecking: { text: 'Checking combat state', updatedAt: 'not-a-date' } })).toBeNull();
+    });
+
+    test('publishes a bounded allowlisted now-checking status', () => {
+        expect(sanitizePublicMission({
+            ...validMission,
+            nowChecking: {
+                text: 'Verifying the fish delivery against inventory and the open proof page.',
+                updatedAt: '2026-08-17T18:30:00.000Z',
+                privateReasoning: 'never publish this'
+            }
+        })?.nowChecking).toEqual({
+            text: 'Verifying the fish delivery against inventory and the open proof page.',
+            updatedAt: '2026-08-17T18:30:00.000Z'
+        });
+    });
+});
+
+describe('updateNowChecking', () => {
+    test('changes only the micro-status and its independent timestamp', () => {
+        expect(updateNowChecking(validMission, 'Checking live combat before continuing.', '2026-08-17T18:31:00.000Z')).toEqual({
+            ...validMission,
+            nowChecking: {
+                text: 'Checking live combat before continuing.',
+                updatedAt: '2026-08-17T18:31:00.000Z'
+            }
+        });
+    });
+
+    test('clears the micro-status without changing the plan timestamp', () => {
+        const withStatus = updateNowChecking(validMission, 'Checking live combat.', '2026-08-17T18:31:00.000Z');
+        expect(updateNowChecking(withStatus, null, '2026-08-17T18:32:00.000Z')).toEqual(validMission);
     });
 });
 
@@ -58,6 +91,16 @@ describe('public mission updater', () => {
     test('parses a one-command milestone advance without accepting replacement fields', () => {
         expect(parseMissionCommand(['--bot=momobot', '--advance'])).toEqual({ kind: 'advance', bot: 'momobot' });
         expect(() => parseMissionCommand(['--bot=momobot', '--advance', '--title=Wrong mode'])).toThrow('Invalid argument');
+    });
+
+    test('parses status-only updates without accepting mission replacement fields', () => {
+        expect(parseMissionCommand(['--bot=momobot', '--now-checking=Checking live combat and the proof page.'])).toEqual({
+            kind: 'status',
+            bot: 'momobot',
+            text: 'Checking live combat and the proof page.'
+        });
+        expect(parseMissionCommand(['--bot=momobot', '--clear-now-checking'])).toEqual({ kind: 'status', bot: 'momobot', text: null });
+        expect(() => parseMissionCommand(['--bot=momobot', '--now-checking=Checking.', '--title=Wrong mode'])).toThrow('Invalid argument');
     });
 
     test('parses a bounded public mission from repeated task flags', () => {
@@ -184,6 +227,37 @@ describe('public mission file', () => {
             { label: 'Cure the wizard and defeat Chronozon', status: 'done' },
             { label: 'Reassemble and return the family crest', status: 'active' }
         ]);
+    });
+
+    test('serializes concurrent status and milestone updates without losing either', async () => {
+        const dir = await mkdtemp(join(tmpdir(), 'momobot-mission-status-cli-'));
+        tempDirs.push(dir);
+        const spectatorDir = join(dir, 'spectator');
+        const botDir = join(dir, 'bots', 'momobot');
+        await mkdir(spectatorDir, { recursive: true });
+        await mkdir(botDir, { recursive: true });
+        await Promise.all([
+            copyFile(join(import.meta.dir, 'mission.ts'), join(spectatorDir, 'mission.ts')),
+            copyFile(join(import.meta.dir, 'set-public-mission.ts'), join(spectatorDir, 'set-public-mission.ts'))
+        ]);
+        await writePublicMission(join(botDir, 'public-mission.json'), validMission);
+        const run = async (argument: string) => {
+            const child = Bun.spawn([process.execPath, join(spectatorDir, 'set-public-mission.ts'), '--bot=momobot', argument], {
+                env: { ...process.env, MOMOBOT_PUBLIC_MISSION_LOCK_HELD: join(botDir, 'public-mission.json.lock') },
+                stdout: 'pipe', stderr: 'pipe'
+            });
+            const exitCode = await child.exited;
+            return { exitCode, stderr: await new Response(child.stderr).text() };
+        };
+        const results = await Promise.all([
+            run('--advance'),
+            run('--now-checking=Checking live combat and the proof page before continuing.')
+        ]);
+        expect(results.every(result => result.exitCode === 0 && result.stderr === '')).toBe(true);
+        const mission = await loadPublicMission(join(botDir, 'public-mission.json'));
+        expect(mission?.tasks[0].status).toBe('done');
+        expect(mission?.tasks[1].status).toBe('active');
+        expect(mission?.nowChecking?.text).toBe('Checking live combat and the proof page before continuing.');
     });
 
     test('writes an atomic sanitized mission readable by the spectator', async () => {

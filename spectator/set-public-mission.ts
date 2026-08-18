@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { advancePublicMission, loadPublicMission, sanitizePublicMission, writePublicMission, type PublicMission } from './mission';
+import { advancePublicMission, loadPublicMission, sanitizePublicMission, updateNowChecking, writePublicMission, type PublicMission } from './mission';
 
 interface ParsedMissionArguments {
     bot: string;
@@ -10,16 +10,23 @@ interface ParsedMissionArguments {
 
 export type ParsedMissionCommand =
     | { kind: 'replace'; bot: string; mission: PublicMission }
-    | { kind: 'advance'; bot: string };
+    | { kind: 'advance'; bot: string }
+    | { kind: 'status'; bot: string; text: string | null };
 
 export function parseMissionCommand(arguments_: string[]): ParsedMissionCommand {
     const values = new Map<string, string>();
     const tasks: Array<{ label: string; status: string }> = [];
     let advance = false;
+    let clearNowChecking = false;
     for (const argument of arguments_) {
         if (argument === '--advance') {
             if (advance) throw new Error(`Invalid argument: ${argument}`);
             advance = true;
+            continue;
+        }
+        if (argument === '--clear-now-checking') {
+            if (clearNowChecking) throw new Error(`Invalid argument: ${argument}`);
+            clearNowChecking = true;
             continue;
         }
         const match = /^--([a-z-]+)=(.*)$/s.exec(argument);
@@ -31,7 +38,7 @@ export function parseMissionCommand(arguments_: string[]): ParsedMissionCommand 
             tasks.push({ status: value.slice(0, separator), label: value.slice(separator + 1) });
             continue;
         }
-        if (!['bot', 'title', 'objective', 'updated-at'].includes(key) || values.has(key)) {
+        if (!['bot', 'title', 'objective', 'updated-at', 'now-checking'].includes(key) || values.has(key)) {
             throw new Error(`Invalid argument: ${argument}`);
         }
         values.set(key, value);
@@ -39,11 +46,21 @@ export function parseMissionCommand(arguments_: string[]): ParsedMissionCommand 
 
     const bot = values.get('bot') || 'momobot';
     if (!/^[a-zA-Z0-9_-]{1,32}$/.test(bot)) throw new Error('Invalid bot name');
+    const nowChecking = values.get('now-checking');
+    const replacementFields = [...values.keys()].filter(key => key !== 'bot' && key !== 'now-checking');
     if (advance) {
-        if (tasks.length > 0 || [...values.keys()].some(key => key !== 'bot')) {
-            throw new Error('Invalid argument: --advance cannot be combined with replacement fields');
+        if (tasks.length > 0 || replacementFields.length > 0 || nowChecking !== undefined || clearNowChecking) {
+            throw new Error('Invalid argument: --advance cannot be combined with replacement or status fields');
         }
         return { kind: 'advance', bot };
+    }
+    if (nowChecking !== undefined || clearNowChecking) {
+        if (tasks.length > 0 || replacementFields.length > 0 || (nowChecking !== undefined && clearNowChecking)) {
+            throw new Error('Invalid argument: now-checking updates cannot be combined with replacement fields');
+        }
+        const text = nowChecking?.trim();
+        if (nowChecking !== undefined && (!text || text.length > 180)) throw new Error('Invalid public now-checking status');
+        return { kind: 'status', bot, text: clearNowChecking ? null : text! };
     }
 
     const mission = sanitizePublicMission({
@@ -65,12 +82,18 @@ export function parseMissionArguments(arguments_: string[]): ParsedMissionArgume
 export async function applyMissionCommand(arguments_: string[]): Promise<void> {
     const command = parseMissionCommand(arguments_);
     const path = resolve(import.meta.dir, '..', 'bots', command.bot, 'public-mission.json');
+    const current = await loadPublicMission(path);
     const mission = command.kind === 'advance'
-        ? advancePublicMission(await loadPublicMission(path))
-        : command.mission;
+        ? advancePublicMission(current)
+        : command.kind === 'status'
+            ? updateNowChecking(current, command.text)
+            : command.mission;
     await writePublicMission(path, mission);
     const active = mission.tasks.find(task => task.status === 'active');
-    console.log(`[spectator] ${command.kind === 'advance' ? 'Advanced' : 'Updated'} public mission for ${command.bot}: ${mission.title}${active ? ` · ${active.label}` : ' · complete'}`);
+    const action = command.kind === 'advance' ? 'Advanced'
+        : command.kind === 'status' ? (command.text === null ? 'Cleared now-checking status for' : 'Updated now-checking status for')
+        : 'Updated public mission for';
+    console.log(`[spectator] ${action} ${command.bot}: ${mission.title}${active ? ` · ${active.label}` : ' · complete'}`);
 }
 
 export async function runMissionCommand(arguments_: string[]): Promise<number> {

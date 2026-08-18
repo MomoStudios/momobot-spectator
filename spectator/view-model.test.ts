@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildFocusModel, buildMapModel, describeLocation, formatAge, formatClock, formatDuration, formatNumber, totalLevel } from './public/view-model.js';
+import { buildFocusModel, buildMapModel, describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, totalLevel, updateTextContent, visibleNowChecking } from './public/view-model.js';
 
 const snapshot = {
     player: { worldX: 100, worldZ: 200, level: 1 },
@@ -38,6 +38,39 @@ describe('dashboard view model', () => {
             location: 'East Ardougne',
             locationDetail: 'Ground floor · 2591, 3336'
         });
+    });
+
+    test('expires cached connection proof independently of network polling', () => {
+        const payload = { connection: 'connected', state: { observedAt: 1_000 } };
+        expect(effectivePayloadConnection(payload, 10_999)).toBe('connected');
+        expect(effectivePayloadConnection(payload, 11_000)).toBe('stale');
+        expect(effectivePayloadConnection({ ...payload, connection: 'disconnected' }, 1_000)).toBe('disconnected');
+        expect(effectivePayloadConnection({ connection: 'connected', state: null }, 1_000)).toBe('stale');
+        expect(effectivePayloadConnection({ connection: 'connected', state: { observedAt: 20_000 } }, 1_000)).toBe('stale');
+    });
+
+    test('does not rewrite unchanged live-region text', () => {
+        let value = 'Checking live combat.';
+        let writes = 0;
+        const node = {
+            get textContent() { return value; },
+            set textContent(next) { value = next; writes++; }
+        };
+        expect(updateTextContent(node, 'Checking live combat.')).toBe(false);
+        expect(writes).toBe(0);
+        expect(updateTextContent(node, 'Checking the proof page.')).toBe(true);
+        expect(writes).toBe(1);
+        expect(value).toBe('Checking the proof page.');
+    });
+
+    test('shows only fresh now-checking status from a live observer', () => {
+        const now = Date.parse('2026-08-17T18:32:00.000Z');
+        const mission = { nowChecking: { text: 'Checking live combat.', updatedAt: '2026-08-17T18:31:00.000Z' } };
+        expect(visibleNowChecking(mission, 'connected', now)).toEqual(mission.nowChecking);
+        expect(visibleNowChecking(mission, 'stale', now)).toBeNull();
+        expect(visibleNowChecking(mission, 'connected', now + 60_000)).toBeNull();
+        expect(visibleNowChecking({ nowChecking: { text: 'Future status', updatedAt: '2026-08-17T18:32:10.000Z' } }, 'connected', now)).toBeNull();
+        expect(visibleNowChecking({ nowChecking: { text: 'Broken', updatedAt: 'invalid' } }, 'connected', now)).toBeNull();
     });
 
     test('formats dashboard metrics', () => {

@@ -36,7 +36,8 @@ The loop:
    privacy boundary (see below).
 4. `loadPublicMission()` reads `bots/<botname>/public-mission.json` as a separate,
    explicit public-intent channel. The schema allowlists a title, objective,
-   timestamp, and at most six `done`/`active`/`pending` tasks.
+   timestamp, at most six `done`/`active`/`pending` tasks, and an optional bounded
+   `nowChecking` operational status with its own timestamp.
 5. The browser polls `/api/state`.
 
 Endpoints: `/api/state`, `/healthz` (503 unless connected *and* state exists).
@@ -88,7 +89,10 @@ and console output before logging.
 **Public mission boundary:** the dashboard never derives intent from controller
 transcripts, process arguments, or private planning. It accepts only the bounded
 `PublicMission` schema from `bots/<botname>/public-mission.json`; malformed files
-fail closed to an empty mission card and unknown fields are discarded.
+fail closed to an empty mission card and unknown fields are discarded. The
+`nowChecking` field is a deliberately authored, viewer-safe operational summary—not
+raw chain-of-thought—and disappears from the UI when older than two minutes or when
+the observer is not provably connected.
 
 Tests assert these properties — see `spectator/state.test.ts`, which checks that
 a private message and a password fixture never appear in serialized output.
@@ -144,6 +148,23 @@ it atomically and activate the next pending task with:
 ```sh
 bun spectator/set-public-mission.ts --bot=momobot --advance
 ```
+
+Publish the controller's immediate viewer-safe working theory separately without
+changing the mission or checklist timestamp:
+
+```sh
+bun spectator/set-public-mission.ts \
+  --bot=momobot \
+  --now-checking="Delivery likely succeeded; checking live combat and the proof page before continuing."
+
+bun spectator/set-public-mission.ts --bot=momobot --clear-now-checking
+```
+
+`--now-checking` is limited to 180 characters and serialized through the same lock
+as mission replacement and advancement. Update it before each meaningful micro-step,
+replace it immediately after observing the result, and clear it on pause or handoff.
+Publish only a concise operational hypothesis and next proof gate. Never publish raw
+reasoning, prompts, transcripts, credentials, private chat, or unverified success.
 
 A milestone update is part of the controller's completion boundary: publish the new
 mission before the first action of a new objective, advance immediately after each

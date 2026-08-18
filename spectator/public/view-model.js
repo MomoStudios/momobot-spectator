@@ -32,6 +32,30 @@ export function formatDuration(durationMs) {
     return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
+export function effectivePayloadConnection(payload, now = Date.now(), maxStateAgeMs = 10_000) {
+    const connection = payload?.connection || 'disconnected';
+    if (connection !== 'connected') return connection;
+    const observedAt = Number(payload?.state?.observedAt);
+    const age = now - observedAt;
+    return Number.isFinite(observedAt) && age >= -5_000 && age < maxStateAgeMs ? 'connected' : 'stale';
+}
+
+export function updateTextContent(node, value) {
+    if (!node) return false;
+    const text = String(value);
+    if (node.textContent === text) return false;
+    node.textContent = text;
+    return true;
+}
+
+export function visibleNowChecking(mission, connection, now = Date.now(), maxAgeMs = 120_000) {
+    const status = mission?.nowChecking;
+    const updatedAt = Date.parse(status?.updatedAt);
+    const age = now - updatedAt;
+    if (connection !== 'connected' || typeof status?.text !== 'string' || !Number.isFinite(updatedAt)) return null;
+    return age >= -5_000 && age < maxAgeMs ? status : null;
+}
+
 const LOCATION_REGIONS = [
     { name: 'Ranging Guild', minX: 2640, maxX: 2720, minZ: 3390, maxZ: 3460 },
     { name: 'Rimmington', minX: 2900, maxX: 3005, minZ: 3150, maxZ: 3279 },

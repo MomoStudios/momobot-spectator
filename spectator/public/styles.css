@@ -44,6 +44,13 @@ button, summary { font: inherit; }
 .objective-copy { min-width: 0; padding: 27px 30px 26px; border-right: 1px solid var(--border-soft); }
 .objective-copy h1 { max-width: 20ch; margin: 0; font-size: clamp(32px, 3.4vw, 48px); line-height: 1.02; letter-spacing: -.045em; font-weight: 520; text-wrap: balance; }
 .objective-copy > p { max-width: 66ch; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.now-checking-bubble { max-width: 680px; margin-top: 18px; padding: 14px 16px 15px; border: 1px solid rgba(113,112,255,.25); border-radius: 12px 12px 12px 4px; background: linear-gradient(135deg, rgba(113,112,255,.11), rgba(113,112,255,.045)); box-shadow: inset 3px 0 0 rgba(113,112,255,.38); }
+.now-checking-bubble.hidden { display: none; }
+.now-checking-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.now-checking-head .meta-label { color: #aaa9ff; }
+#now-checking-age { color: var(--dim); font-size: 9px; white-space: nowrap; }
+#now-checking-text { margin: 7px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.now-checking-bubble + .live-action { margin-top: 14px; }
 .live-action { max-width: 680px; margin-top: 25px; padding: 15px 17px; display: flex; align-items: center; gap: 13px; border: 1px solid var(--border-soft); border-radius: 9px; background: rgba(0,0,0,.15); }
 .activity-orb { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px rgba(113,112,255,.55); }
 .live-action > div { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 12px; }

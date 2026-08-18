@@ -205,6 +205,13 @@ h2 { margin: 5px 0 0; font-size: 16px; letter-spacing: -.01em; font-weight: 520;
 .skill-icon-15 { background-position: 0 -375px; }
 .skill-icon-16 { background-position: 0 -400px; }
 .skill-icon-17 { background-position: 0 -425px; }
+.skill-icon-16, .skill-icon-17 {
+    filter:
+        drop-shadow(1px 0 0 rgba(182,188,198,.62))
+        drop-shadow(-1px 0 0 rgba(182,188,198,.62))
+        drop-shadow(0 1px 0 rgba(182,188,198,.62))
+        drop-shadow(0 -1px 0 rgba(182,188,198,.62));
+}
 .skill-icon-18 { background-position: 0 -450px; }
 .skill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-size: 11px; }
 .skill-xp { color: var(--dim); font-size: 9px; }

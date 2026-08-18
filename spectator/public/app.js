@@ -1,4 +1,4 @@
-import { buildFocusModel, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, updateTextContent, visibleNowChecking } from './view-model.js?v=8';
+import { describeLocation, effectivePayloadConnection, formatAge, formatClock, formatDuration, formatNumber, updateTextContent, visibleNowChecking } from './view-model.js?v=9';
 import { normalizeScene, streamSocketUrl } from './scene-view.js?v=2';
 import { feedContentForConnection, feedMessagesForConnection, feedTabForKey, normalizeFeedTab } from './feed-view.js?v=3';
 import { skillIconIndex } from './skill-icons.js?v=1';
@@ -45,11 +45,9 @@ function renderConnection(payload) {
 
 function renderVitals(state) {
     const { player, skills } = state;
-    const focus = buildFocusModel(state);
-    setText('current-focus', focus.title);
-    setText('current-context', focus.context);
-    setText('location', focus.location);
-    setText('location-detail', focus.locationDetail);
+    const location = describeLocation(player.worldX, player.worldZ, player.level);
+    setText('location', location.name);
+    setText('location-detail', location.detail);
     setText('skill-count', skills.length);
     setText('now-hp-label', `${player.hp} / ${player.maxHp}`);
     $('now-hp-bar').max = Math.max(1, player.maxHp);
@@ -439,8 +437,6 @@ async function poll() {
         };
         latestPayload = offlinePayload;
         render(offlinePayload);
-        setText('current-focus', 'Observer feed unavailable');
-        setText('current-context', 'The public state service is reconnecting');
     } finally {
         clearTimeout(timeout);
         polling = false;

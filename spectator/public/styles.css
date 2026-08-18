@@ -50,13 +50,6 @@ button, summary { font: inherit; }
 .now-checking-head .meta-label { color: #aaa9ff; }
 #now-checking-age { color: var(--dim); font-size: 9px; white-space: nowrap; }
 #now-checking-text { margin: 7px 0 0; color: var(--text-2); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-.now-checking-bubble + .live-action { margin-top: 14px; }
-.live-action { max-width: 680px; margin-top: 25px; padding: 15px 17px; display: flex; align-items: center; gap: 13px; border: 1px solid var(--border-soft); border-radius: 9px; background: rgba(0,0,0,.15); }
-.activity-orb { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px rgba(113,112,255,.55); }
-.live-action > div { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 12px; }
-.live-action .meta-label { grid-column: 1 / -1; }
-.live-action strong { color: var(--text); font-size: 15px; font-weight: 550; }
-.live-action #current-context { min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mission-task-list { margin: 0; padding: 20px 24px; display: grid; align-content: center; gap: 5px; list-style: none; background: rgba(0,0,0,.08); }
 .mission-task { min-height: 34px; display: flex; align-items: center; gap: 10px; border-radius: 7px; padding: 6px 9px; color: var(--text-2); font-size: 11px; line-height: 1.35; }
 .mission-task-marker { width: 16px; height: 16px; flex: 0 0 16px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; color: var(--dim); font: 650 9px/1 ui-monospace, monospace; }
@@ -253,10 +246,6 @@ footer { min-height: 72px; padding: 26px 4px 0; display: flex; justify-content: 
     .objective-copy { padding: 22px 20px 20px; }
     .objective-copy h1 { font-size: 32px; }
     .objective-copy > p { font-size: 12px; }
-    .live-action { margin-top: 20px; padding: 13px 14px; }
-    .live-action > div { grid-template-columns: 1fr; gap: 4px; }
-    .live-action .meta-label { grid-column: auto; }
-    .live-action #current-context { white-space: normal; }
     .mission-task-list { padding: 14px 12px; }
     .objective-footer { padding: 17px 20px; grid-template-columns: 1fr; gap: 18px; }
     .objective-footer .long-term-progress { grid-column: auto; }

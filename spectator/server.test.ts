@@ -45,7 +45,14 @@ describe('spectator static assets', () => {
         expect(html).not.toContain('>Game Chat</button>');
         expect(html).toContain('id="live-objective"');
         expect(html).toContain('>LIVE OBJECTIVE</div>');
-        expect(html).toContain('id="current-focus"');
+        expect(html).not.toContain('id="current-focus"');
+        expect(html).not.toContain('id="current-context"');
+        expect(html).not.toContain('class="live-action"');
+        expect(html).not.toContain('activity-orb');
+        expect(app).not.toContain("setText('current-focus'");
+        expect(app).not.toContain("setText('current-context'");
+        expect(styles).not.toContain('.live-action');
+        expect(styles).not.toContain('.activity-orb');
         expect(html).not.toContain('id="vicinity-field"');
         expect(html).not.toContain('id="vicinity-markers"');
         expect(html).not.toContain('id="vicinity-summary"');

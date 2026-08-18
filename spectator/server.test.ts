@@ -26,6 +26,9 @@ describe('spectator static assets', () => {
         const html = String(assets['/']?.body);
         const app = String(assets['/app.js']?.body);
         const styles = String(assets['/styles.css']?.body);
+        expect(html).toContain('/styles.css?v=17');
+        expect(styles).toContain('.skill-icon-16, .skill-icon-17');
+        expect(styles).toContain('drop-shadow(1px 0 0 rgba(182,188,198,.62))');
         expect(app).toContain('renderGameFeed(null, false)');
         expect(app).toContain('latestPayload = offlinePayload');
         expect(app).toContain('visibleOperationalStatus');
